@@ -1986,6 +1986,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"request_account_deletion":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
 "request_withdrawal":
 { Args: { "p_amount": number }; Returns: {
               "amount": number,
