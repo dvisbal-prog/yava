@@ -1,0 +1,14 @@
+{
+  "name": "yava",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "mobile": "pnpm --filter @yava/mobile start",
+    "admin": "pnpm --filter @yava/admin dev",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build:admin": "pnpm --filter @yava/admin build",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push"
+  }
+}

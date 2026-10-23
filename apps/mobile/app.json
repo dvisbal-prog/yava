@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "YAVA",
+    "slug": "yava",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "yava",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "co.yava.app",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "config": { "googleMapsApiKey": "${GOOGLE_MAPS_IOS_KEY}" },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "YAVA usa tu ubicación para mostrarte comercios cercanos y calcular la entrega.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Los repartidores comparten su ubicación durante las entregas.",
+        "NSCameraUsageDescription": "Toma fotos de tus productos y documentos.",
+        "NSPhotoLibraryUsageDescription": "Selecciona fotos de tus productos y documentos.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "co.yava.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      },
+      "config": { "googleMaps": { "apiKey": "${GOOGLE_MAPS_ANDROID_KEY}" } },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "FOREGROUND_SERVICE", "FOREGROUND_SERVICE_LOCATION",
+        "CAMERA", "READ_MEDIA_IMAGES", "POST_NOTIFICATIONS"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": { "output": "static", "favicon": "./assets/images/favicon.png" },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-apple-authentication",
+      ["expo-splash-screen", { "backgroundColor": "#FFFFFF", "image": "./assets/images/splash-icon.png", "imageWidth": 160 }],
+      ["expo-location", { "locationAlwaysAndWhenInUsePermission": "Los repartidores comparten su ubicación durante las entregas.", "isAndroidForegroundServiceEnabled": true }],
+      ["expo-image-picker", { "photosPermission": "Selecciona fotos de tus productos y documentos.", "cameraPermission": "Toma fotos de tus productos y documentos." }],
+      ["expo-notifications", { "color": "#1E5EFF" }],
+      ["expo-build-properties", { "android": { "compileSdkVersion": 36, "targetSdkVersion": 36 } }]
+    ],
+    "experiments": { "typedRoutes": false },
+    "extra": { "eas": { "projectId": "REEMPLAZAR_CON_EAS_PROJECT_ID" } },
+    "updates": { "url": "https://u.expo.dev/REEMPLAZAR_CON_EAS_PROJECT_ID" },
+    "runtimeVersion": { "policy": "appVersion" }
+  }
+}
