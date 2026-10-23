@@ -48,7 +48,8 @@ RPCs (llamar con `supabase.rpc("nombre", {...})`):
 - Cliente: `place_order(p_merchant_id, p_address_id, p_items, p_payment_method, p_payment_method_id, p_coupon_code, p_notes)` — `p_items = [{product_id, qty, option_ids[], notes}]`; `place_shipment(p_pickup, p_dropoff, p_package, p_payment_method, p_notes)`; `cancel_order(p_order_id, p_reason)`; `search_catalog(p_q, p_city)`; `nearby_merchants(p_lat, p_lng, p_category, p_radius_km)`; `coverage_for(p_lat, p_lng)`; `mark_notifications_read(p_ids)`.
 - Comercio: `register_merchant(p jsonb)`; `merchant_set_order_status(p_order_id, p_status, p_eta_min)` con `accepted|preparing|ready`; `merchant_dashboard(p_merchant, p_from)`.
 - Repartidor: `register_courier(p jsonb)`; `courier_submit_for_review()`; `courier_available_orders(p_lat, p_lng, p_radius_km)`; `courier_accept_order(p_order_id)`; `courier_set_order_status(p_order_id, p_status, p_delivery_code)` con `picked_up|on_the_way|delivered` (delivered exige el código de 4 dígitos, o `'EFECTIVO'` si pago en efectivo); `courier_update_location(p_lat, p_lng, p_order_id)`; `request_withdrawal(p_amount)`; `courier_dashboard()`.
-- Admin/Owner: `admin_overview(p_from, p_to, p_city)`; `admin_generate_settlements(p_start, p_end)`; `admin_settlement_transition(p_id, p_status, p_reason, p_reference)`; `admin_set_merchant_status(p_id, p_status, p_reason)`; `admin_set_courier_status(p_id, p_status, p_reason)`; `admin_invite(p_email, p_role)`; `admin_accept_invitation(p_token)`.
+- Cuenta: `request_account_deletion()` (anonimiza y elimina el usuario; falla si hay pedidos en curso).
+- Admin/Owner: `admin_overview(p_from, p_to, p_city)`; `admin_order_action(p_order_id, 'cancel'|'release_courier'|'force_status', p_reason, p_status)`; `admin_withdrawal_transition(p_id, p_status, p_reason, p_reference)`; `admin_merchant_stats(p_days)`; `admin_report(p_from, p_to, p_city)`; `invitation_preview(p_token)`; `admin_generate_settlements(p_start, p_end)`; `admin_settlement_transition(p_id, p_status, p_reason, p_reference)`; `admin_set_merchant_status(p_id, p_status, p_reason)`; `admin_set_courier_status(p_id, p_status, p_reason)`; `admin_invite(p_email, p_role)`; `admin_accept_invitation(p_token)`.
 
 Estados de pedido: `pending_payment → placed → accepted → preparing → ready → (assigned) → picked_up → on_the_way → delivered | cancelled`. Etiquetas en `ORDER_STATUS_LABEL`.
 
@@ -61,3 +62,10 @@ Usuarios demo (seed, clave `yava2026`): `cliente@yava.app`, `comercio@yava.app` 
 ## Admin web (`apps/admin`)
 
 Next.js App Router, `@supabase/ssr` (cliente en `src/lib/supabase/server.ts` y `client.ts`, middleware que refresca sesión y protege `/(admin)`). Acceso solo por invitación (`admin_invitations` + `admin_accept_invitation`). Roles: owner, finance, operations, support; ocultar menús según `admin_users.role`. Tablas con filtros, detalle lateral, acciones con motivo obligatorio (quedan en `audit_log`). Gráficas con `recharts`. Iconos `lucide-react`. Mismos tokens de color.
+
+
+## Pagos y tareas (Edge Functions · `supabase/functions`)
+
+- `wompi-webhook`: recibe eventos de Wompi, verifica firma y llama `confirm_payment` (service role). Pedido `pending_payment` → `placed` al aprobarse.
+- `send-push`: Database Webhook sobre `notifications` INSERT → Expo Push API usando `device_tokens`.
+- `scheduled-jobs?job=expire_payments|owner_alerts|daily_summary`: programadas con `supabase/cron.sql` (pg_cron + pg_net).
