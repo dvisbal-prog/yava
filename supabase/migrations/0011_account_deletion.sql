@@ -1,29 +1,21 @@
 -- YAVA · Eliminación de cuenta (requisito App Store / Google Play)
--- Anonimiza el perfil y borra datos personales. El usuario de auth se bloquea y se le quitan correo/teléfono/identidades
--- (no se borra la fila para conservar la integridad de pedidos y auditoría). Los pedidos quedan anonimizados.
-create or replace function public.request_account_deletion() returns void
-language plpgsql security definer set search_path = public, auth as $$
-declare v_uid uuid := auth.uid();
+-- La parte pública se anonimiza aquí; la parte de Auth (bloquear usuario, quitar correo/teléfono) la hace la
+-- Edge Function `delete-account` con service role (supabase.auth.admin.updateUserById). La app invoca esa función.
+create or replace function public.anonymize_account(p_uid uuid) returns void
+language plpgsql security definer set search_path = public as $$
 begin
-  if v_uid is null then raise exception 'No autenticado' using errcode = '28000'; end if;
-  if exists (select 1 from orders where (customer_id = v_uid or courier_id = v_uid) and status not in ('delivered','cancelled')) then
+  if auth.role() is distinct from 'service_role' and current_user not in ('postgres','service_role') and auth.uid() is distinct from p_uid then
+    raise exception 'Sin permiso' using errcode = '42501';
+  end if;
+  if exists (select 1 from orders where (customer_id = p_uid or courier_id = p_uid) and status not in ('delivered','cancelled')) then
     raise exception 'Tienes pedidos en curso. Espera a que terminen para eliminar tu cuenta.';
   end if;
-  if exists (select 1 from merchants where owner_id = v_uid and status = 'active') then
+  if exists (select 1 from merchants where owner_id = p_uid and status = 'active') then
     raise exception 'Tu comercio está activo. Pide a soporte pausarlo antes de eliminar la cuenta.';
   end if;
-  perform audit('account.delete', 'profile', v_uid::text, 'Solicitud del usuario', null, null);
-  delete from addresses where user_id = v_uid;
-  delete from payment_methods where user_id = v_uid;
-  delete from device_tokens where user_id = v_uid;
-  delete from favorites where user_id = v_uid;
-  delete from notifications where user_id = v_uid;
-  update orders set address_snapshot = '{}'::jsonb, notes = null where customer_id = v_uid;
-  update order_messages set body = '[mensaje eliminado]' where sender_id = v_uid;
-  update couriers set plate = null, document_number = null, bank_account = null, is_online = false, current_lat = null, current_lng = null where user_id = v_uid;
-  delete from courier_documents where courier_id = v_uid;
-  update profiles set full_name = 'Usuario eliminado', phone = null, email = null, avatar_url = null, notifications_enabled = false where id = v_uid;
-  delete from auth.identities where user_id = v_uid;
-  update auth.users set email = 'eliminado+' || v_uid::text || '@yava.invalid', phone = null, encrypted_password = null,
-    raw_user_meta_data = '{}'::jsonb, banned_until = '2999-01-01'::timestamptz where id = v_uid;
+  perform audit('account.delete', 'profile', p_uid::text, 'Solicitud del usuario', null, null);
+  update orders set address_snapshot = '{}'::jsonb, notes = null where customer_id = p_uid;
+  update order_messages set body = '[mensaje eliminado]' where sender_id = p_uid;
+  update couriers set plate = null, document_number = null, bank_account = null, is_online = false, current_lat = null, current_lng = null where user_id = p_uid;
+  update profiles set full_name = 'Usuario eliminado', phone = null, email = null, avatar_url = null, notifications_enabled = false where id = p_uid;
 end $$;

@@ -27,7 +27,7 @@ export default function CourierSettings() {
       try {
         if (!session) return;
         try { await setOnline.mutateAsync(false); } catch { /* seguir */ }
-        const { error } = await supabase.rpc("request_account_deletion");
+        const { error } = await supabase.functions.invoke("delete-account");
         if (error) throw error;
         Alert.alert("Cuenta eliminada", "Tus datos personales fueron eliminados de YAVA.", [{ text: "Entendido", onPress: () => signOut() }]);
       } catch (e) { Alert.alert("No se pudo eliminar", errorMessage(e)); }

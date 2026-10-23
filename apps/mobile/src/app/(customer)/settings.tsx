@@ -56,7 +56,7 @@ export default function Settings() {
           { text: "Sí, eliminar", style: "destructive", onPress: async () => {
             setBusy("delete");
             try {
-              const { error } = await supabase.rpc("request_account_deletion");
+              const { error } = await supabase.functions.invoke("delete-account");
               if (error) throw error;
               clearCart(); setAddress(null);
               await signOut();

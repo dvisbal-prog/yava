@@ -39,6 +39,7 @@ create or replace function public.expire_pending_payments() returns integer
 language plpgsql security definer set search_path = public as $$
 declare n integer;
 begin
+  if auth.role() is distinct from 'service_role' and current_user not in ('postgres','service_role') then raise exception 'Solo tareas internas' using errcode = '42501'; end if;
   with upd as (
     update orders set status = 'cancelled', cancel_reason = 'Pago no completado', payment_status = 'failed'
     where status = 'pending_payment' and placed_at < now() - interval '30 minutes' returning 1
@@ -54,6 +55,7 @@ declare v jsonb; n integer := 0; r record;
   v_from timestamptz := date_trunc('day', (now() at time zone 'America/Bogota') - interval '1 day') at time zone 'America/Bogota';
   v_to timestamptz := date_trunc('day', now() at time zone 'America/Bogota') at time zone 'America/Bogota';
 begin
+  if auth.role() is distinct from 'service_role' and current_user not in ('postgres','service_role') then raise exception 'Solo tareas internas' using errcode = '42501'; end if;
   select jsonb_build_object(
     'delivered', count(*) filter (where status = 'delivered'),
     'cancelled', count(*) filter (where status = 'cancelled'),
@@ -76,6 +78,7 @@ create or replace function public.generate_owner_alerts() returns integer
 language plpgsql security definer set search_path = public as $$
 declare n integer := 0; c integer;
 begin
+  if auth.role() is distinct from 'service_role' and current_user not in ('postgres','service_role') then raise exception 'Solo tareas internas' using errcode = '42501'; end if;
   select count(*) into c from payments where status = 'failed' and created_at > now() - interval '1 hour';
   if c >= 3 and not exists (select 1 from owner_alerts where entity = 'payments' and created_at > now() - interval '1 hour') then
     insert into owner_alerts (severity, title, body, entity) values ('critical', 'Pagos fallidos recurrentes', format('%s intentos fallidos con la pasarela en la última hora.', c), 'payments');

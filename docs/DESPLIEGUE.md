@@ -1,5 +1,7 @@
 # Despliegue
 
+> **Estado real (23 oct 2026):** el backend está desplegado en el proyecto Supabase `dgebycmouxjfuwtnhxmu` ("Yava App", us-east-2): esquema, RLS, RPCs, vistas, buckets, Edge Functions (`wompi-webhook`, `send-push`, `scheduled-jobs`, `delete-account`) y datos demo. URL `https://dgebycmouxjfuwtnhxmu.supabase.co`. Pendiente: proveedores de Auth (Phone/Google/Apple), secreto de Wompi, Database Webhook de `send-push`, cron, Vercel y builds EAS.
+
 ## 1. Supabase (producción)
 
 1. Crear proyecto en supabase.com (región `us-east-1` es la más cercana a Colombia). Guardar: `Project URL`, `anon key`, `service_role key`, `DB password`.
