@@ -36,6 +36,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       if (!inAuth && group !== "(customer)" && group !== "modal") router.replace("/(customer)");
       return;
     }
+    // (onboarding): registro de comercio / repartidor, disponible para cualquier usuario autenticado.
+    if (group === "(onboarding)" || group === "modal") return;
     const target = ROLE_GROUP[role];
     // Un rol no debe estar en el grupo de otro rol ni en pantallas de acceso.
     if (inAuth || (inRoleGroup && group !== target)) router.replace(`/${target}` as never);
@@ -61,6 +63,7 @@ export default function RootLayout() {
               <Stack.Screen name="(merchant)" />
               <Stack.Screen name="(courier)" />
               <Stack.Screen name="(owner)" />
+              <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="modal" options={{ presentation: "modal" }} />
             </Stack>
           </AuthGate>

@@ -21,6 +21,7 @@ docs/            Este documento, plan de lanzamiento y checklist de tiendas.
 | `(merchant)`  | comercio (`merchant_members`)        | 49–56, 65–68, 73–80  |
 | `(courier)`   | repartidor (`couriers`)              | 57–64, 69–72         |
 | `(owner)`     | dirección (`admin_users`)            | 97–104               |
+| `(onboarding)`| registro comercio/repartidor (cualquier usuario autenticado) | 49, 57–59, 65 |
 | `modal/`      | hojas modales compartidas            |                      |
 
 `src/app/_layout.tsx` contiene `AuthGate`: lee `useEffectiveRole()` (store `src/store/auth.ts`) y redirige al grupo correcto. Un invitado puede navegar `(customer)`; las acciones protegidas (pedir, favoritos, cuenta) llevan a `/(auth)/login`.
