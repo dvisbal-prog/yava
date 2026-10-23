@@ -31,3 +31,4 @@ Usuarios de prueba (clave `yava2026`): `cliente@yava.app`, `comercio@yava.app` (
 - `docs/PLAN-LANZAMIENTO.md` — plan de 2 semanas y lista de accesos/credenciales necesarios.
 - `docs/CHECKLIST-TIENDAS.md` — publicación en App Store y Google Play.
 - `docs/DESPLIEGUE.md` — Supabase (producción), Vercel, Edge Functions y cron.
+- `docs/PENDIENTES-PANEL-SUPABASE.md` — lo que falta hacer en el panel de Supabase (Auth, webhook push, cron, Wompi).
