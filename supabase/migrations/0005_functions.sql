@@ -233,7 +233,7 @@ begin
   insert into orders (customer_id, merchant_id, city_id, type, status, address_snapshot, delivery_lat, delivery_lng,
                       payment_method, payment_method_id, payment_status, notes, commission_rate, eta_min, eta_max)
   values (v_uid, v_m.id, coalesce(v_addr.city_id, v_m.city_id), v_m.category::text::order_type,
-          (case when p_payment_method = 'cash' then 'placed' else 'pending_payment' end)::order_status,
+          (case when p_payment_method in ('cash','nequi','daviplata') then 'placed' else 'pending_payment' end)::order_status,
           to_jsonb(v_addr), v_addr.lat, v_addr.lng,
           p_payment_method, p_payment_method_id, 'pending', p_notes, v_m.commission_rate, v_m.prep_min + 10, v_m.prep_max + 15)
   returning * into v_order;
@@ -311,7 +311,7 @@ begin
   insert into orders (customer_id, type, status, address_snapshot, delivery_lat, delivery_lng, pickup_snapshot, package_details,
                       items_subtotal, delivery_fee, service_fee, total, courier_payout, payment_method, notes, eta_min, eta_max,
                       city_id)
-  values (v_uid, 'shipment', (case when p_payment_method = 'cash' then 'placed' else 'pending_payment' end)::order_status,
+  values (v_uid, 'shipment', (case when p_payment_method in ('cash','nequi','daviplata') then 'placed' else 'pending_payment' end)::order_status,
           p_dropoff, (p_dropoff->>'lat')::float, (p_dropoff->>'lng')::float, p_pickup, p_package,
           0, v_fee, v_service, v_fee + v_service, v_fee, p_payment_method, p_notes, 30, 60,
           (select city_id from profiles where id = v_uid))

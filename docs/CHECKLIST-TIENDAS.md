@@ -30,3 +30,6 @@
 - [ ] Variables EXPO_PUBLIC_* en EAS secrets · claves de Google Maps
 - [ ] Términos y condiciones + política de privacidad publicados (pueden ir en Vercel: `admin.yava.app/legal/...` o dominio público)
 - [ ] Prueba completa en iOS y Android reales: OTP, Google, Apple, ubicación, pedido, push, pago Wompi sandbox
+
+## Páginas legales
+- Borradores publicados con el panel web: `https://<admin>/legal/privacidad` y `https://<admin>/legal/terminos` (rutas públicas). **Revisión legal obligatoria antes de enviar a las tiendas.**

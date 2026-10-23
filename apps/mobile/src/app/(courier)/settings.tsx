@@ -21,16 +21,16 @@ export default function CourierSettings() {
     { text: "Cerrar sesión", style: "destructive", onPress: async () => { try { await setOnline.mutateAsync(false); } catch { /* seguir */ } await signOut(); } },
   ]);
 
-  const deleteAccount = () => Alert.alert("Eliminar cuenta", "Enviaremos la solicitud a soporte. Tus entregas pendientes y saldo se revisan antes de cerrar la cuenta. ¿Continuar?", [
+  const deleteAccount = () => Alert.alert("Eliminar cuenta", "Se eliminarán tus datos personales y documentos. Debes tener el saldo retirado y ninguna entrega en curso. ¿Continuar?", [
     { text: "Cancelar", style: "cancel" },
     { text: "Eliminar cuenta", style: "destructive", onPress: async () => {
       try {
         if (!session) return;
-        const { error } = await supabase.from("support_cases").insert({ opened_by: session.user.id, opener_role: "courier", category: "cuenta", subject: "Solicitud de eliminación de cuenta", description: `El repartidor ${profile?.full_name ?? ""} solicita eliminar su cuenta desde la app.`, status: "open", priority: "normal" });
-        if (error) throw error;
         try { await setOnline.mutateAsync(false); } catch { /* seguir */ }
-        Alert.alert("Solicitud enviada", "Soporte procesará la eliminación en los próximos días. Cerraremos tu sesión.", [{ text: "Entendido", onPress: () => signOut() }]);
-      } catch (e) { Alert.alert("No se pudo enviar", errorMessage(e)); }
+        const { error } = await supabase.rpc("request_account_deletion");
+        if (error) throw error;
+        Alert.alert("Cuenta eliminada", "Tus datos personales fueron eliminados de YAVA.", [{ text: "Entendido", onPress: () => signOut() }]);
+      } catch (e) { Alert.alert("No se pudo eliminar", errorMessage(e)); }
     } },
   ]);
 

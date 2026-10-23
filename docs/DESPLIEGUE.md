@@ -7,7 +7,7 @@
    ```bash
    npx supabase login
    npx supabase link --project-ref <ref>
-   npx supabase db push                      # migraciones 0001–0009
+   npx supabase db push                      # migraciones 0001–0011
    psql "<DATABASE_URL>" -f supabase/seed/seed.sql   # opcional: datos demo (NO en producción real; usar solo cities y platform_settings)
    ```
    Para producción real ejecutar solo las secciones *Ciudades* y *Configuración* del seed y crear la primera owner con el SQL Editor:

@@ -51,18 +51,16 @@ export default function Settings() {
     Alert.alert("Eliminar cuenta", "Se borrarán tus datos, direcciones y métodos de pago. Esta acción no se puede deshacer.", [
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar mi cuenta", style: "destructive", onPress: () => {
-        Alert.alert("¿Estás seguro?", "Confirma para enviar la solicitud de eliminación.", [
+        Alert.alert("¿Estás seguro?", "Se eliminarán tus datos de forma permanente. Si tienes pedidos en curso, espera a que terminen.", [
           { text: "No", style: "cancel" },
           { text: "Sí, eliminar", style: "destructive", onPress: async () => {
             setBusy("delete");
             try {
-              // La eliminación del usuario en Auth requiere permisos de servicio: se registra un caso de soporte
-              // con prioridad alta y se cierra la sesión. TODO(backend): Edge Function `delete_account`.
-              const { error } = await supabase.from("support_cases").insert({ opened_by: session?.user.id as string, opener_role: "customer", category: "account", subject: "Eliminar cuenta", description: "El usuario solicitó eliminar su cuenta desde la app.", status: "open", priority: "high" });
+              const { error } = await supabase.rpc("request_account_deletion");
               if (error) throw error;
               clearCart(); setAddress(null);
               await signOut();
-              Alert.alert("Solicitud enviada", "Eliminaremos tu cuenta en máximo 72 horas.");
+              Alert.alert("Cuenta eliminada", "Tus datos personales fueron eliminados de YAVA.");
               router.replace("/(auth)" as never);
             } catch (e) { Alert.alert("No se pudo procesar", errorMessage(e)); } finally { setBusy(null); }
           } },

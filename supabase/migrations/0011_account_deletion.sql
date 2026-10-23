@@ -1,5 +1,6 @@
 -- YAVA · Eliminación de cuenta (requisito App Store / Google Play)
--- Anonimiza el perfil, borra datos personales y elimina el usuario de auth. Los pedidos se conservan anonimizados para contabilidad.
+-- Anonimiza el perfil y borra datos personales. El usuario de auth se bloquea y se le quitan correo/teléfono/identidades
+-- (no se borra la fila para conservar la integridad de pedidos y auditoría). Los pedidos quedan anonimizados.
 create or replace function public.request_account_deletion() returns void
 language plpgsql security definer set search_path = public, auth as $$
 declare v_uid uuid := auth.uid();
@@ -22,5 +23,7 @@ begin
   update couriers set plate = null, document_number = null, bank_account = null, is_online = false, current_lat = null, current_lng = null where user_id = v_uid;
   delete from courier_documents where courier_id = v_uid;
   update profiles set full_name = 'Usuario eliminado', phone = null, email = null, avatar_url = null, notifications_enabled = false where id = v_uid;
-  delete from auth.users where id = v_uid;
+  delete from auth.identities where user_id = v_uid;
+  update auth.users set email = 'eliminado+' || v_uid::text || '@yava.invalid', phone = null, encrypted_password = null,
+    raw_user_meta_data = '{}'::jsonb, banned_until = '2999-01-01'::timestamptz where id = v_uid;
 end $$;
