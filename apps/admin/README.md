@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YAVA · Panel administrativo (`apps/admin`)
 
-## Getting Started
+Next.js 16 (App Router) + Tailwind 4 + `@supabase/ssr`. Pantallas 81–96 del diseño.
 
-First, run the development server:
+## Configuración
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp apps/admin/.env.example apps/admin/.env.local   # NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY
+pnpm admin                                           # http://localhost:3000
+pnpm --filter @yava/admin typecheck && pnpm --filter @yava/admin build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Usuarios demo (seed): `owner@yava.app` (owner) y `finanzas@yava.app` (finance), clave `yava2026`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Estructura
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/proxy.ts` + `src/lib/supabase/middleware.ts`: refresca la sesión y protege el panel (sin sesión → `/login`; sin fila activa en `admin_users` → `/sin-acceso`).
+- `src/lib/auth.ts`: `getAdminContext()` (rol + perfil) y `requireSection()` (404 si el rol no tiene la sección).
+- `src/lib/roles.ts`: visibilidad de menú y permisos por rol (owner, finance, operations, support).
+- `src/app/(auth)`: `/login`, `/verificar`, `/invitacion/[token]`, `/sin-acceso`; `src/app/auth/callback` intercambia el código del enlace mágico.
+- `src/app/(admin)`: Panorama `/`, `/pedidos`, `/comercios`, `/repartidores`, `/finanzas/{ingresos,conciliacion,liquidaciones}`, `/soporte`, `/reportes` (+ `/reportes/csv`), `/equipo`, `/configuracion`, `/buscar`.
+- Mutaciones: server actions en cada `actions.ts`; toda acción sensible exige motivo y queda en `audit_log` (RPC `audit`).
+- UI reutilizable en `src/components/ui`; gráficas en `src/components/charts` (recharts); Realtime en `src/components/realtime`.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Tokens de color: variables CSS en `src/app/globals.css` (espejo de `colors` en `@yava/shared`).

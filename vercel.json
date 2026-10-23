@@ -1,0 +1,6 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile=false",
+  "buildCommand": "pnpm --filter @yava/admin build",
+  "outputDirectory": "apps/admin/.next",
+  "framework": "nextjs"
+}

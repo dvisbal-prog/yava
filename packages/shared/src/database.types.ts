@@ -1297,8 +1297,67 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"admin_merchant_stats":
+{ Args: { "p_days"?: number }; Returns: {
+              "avg_prep_min": number,"cancelled_30d": number,"merchant_id": string,"orders_30d": number,"sales_30d": number
+            }[]
+                           },
+"admin_order_action":
+{ Args: { "p_action": string,"p_order_id": string,"p_reason": string,"p_status"?: Database["public"]['Enums']["order_status"] }; Returns: {
+              "accepted_at": string | null,
+"address_snapshot": NonNullable<Json>,
+"assigned_at": string | null,
+"cancel_reason": string | null,
+"cancelled_at": string | null,
+"cancelled_by": string | null,
+"city_id": string | null,
+"commission_amount": number,
+"commission_rate": number,
+"coupon_id": string | null,
+"courier_id": string | null,
+"courier_payout": number,
+"created_at": string,
+"customer_id": string,
+"delivered_at": string | null,
+"delivery_code": string,
+"delivery_fee": number,
+"delivery_lat": number | null,
+"delivery_lng": number | null,
+"discount": number,
+"eta_max": number | null,
+"eta_min": number | null,
+"gateway_fee": number,
+"id": string,
+"items_subtotal": number,
+"merchant_id": string | null,
+"merchant_payout": number,
+"notes": string | null,
+"number": number,
+"package_details": Json | null,
+"payment_method": Database["public"]['Enums']["payment_method"],
+"payment_method_id": string | null,
+"payment_status": Database["public"]['Enums']["payment_status"],
+"picked_up_at": string | null,
+"pickup_snapshot": Json | null,
+"placed_at": string,
+"ready_at": string | null,
+"service_fee": number,
+"status": Database["public"]['Enums']["order_status"],
+"total": number,
+"type": Database["public"]['Enums']["order_type"],
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "orders"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "admin_overview":
 { Args: { "p_city"?: string,"p_from"?: string,"p_to"?: string }; Returns: Json
+                           },
+"admin_report":
+{ Args: { "p_city"?: string,"p_from": string,"p_to": string }; Returns: Json
                            },
 "admin_set_courier_status":
 { Args: { "p_id": string,"p_reason": string,"p_status": Database["public"]['Enums']["courier_status"] }; Returns: {
@@ -1398,11 +1457,80 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"admin_withdrawal_transition":
+{ Args: { "p_id": string,"p_reason": string,"p_reference"?: string,"p_status": Database["public"]['Enums']["settlement_status"] }; Returns: {
+              "amount": number,
+"bank_snapshot": Json | null,
+"courier_id": string,
+"created_at": string,
+"id": string,
+"processed_at": string | null,
+"processed_by": string | null,
+"reference": string | null,
+"status": Database["public"]['Enums']["settlement_status"]
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "courier_withdrawals"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "audit":
 { Args: { "p_action": string,"p_after": Json,"p_before": Json,"p_entity": string,"p_entity_id": string,"p_reason": string }; Returns: undefined
                            },
 "cancel_order":
 { Args: { "p_order_id": string,"p_reason": string }; Returns: {
+              "accepted_at": string | null,
+"address_snapshot": NonNullable<Json>,
+"assigned_at": string | null,
+"cancel_reason": string | null,
+"cancelled_at": string | null,
+"cancelled_by": string | null,
+"city_id": string | null,
+"commission_amount": number,
+"commission_rate": number,
+"coupon_id": string | null,
+"courier_id": string | null,
+"courier_payout": number,
+"created_at": string,
+"customer_id": string,
+"delivered_at": string | null,
+"delivery_code": string,
+"delivery_fee": number,
+"delivery_lat": number | null,
+"delivery_lng": number | null,
+"discount": number,
+"eta_max": number | null,
+"eta_min": number | null,
+"gateway_fee": number,
+"id": string,
+"items_subtotal": number,
+"merchant_id": string | null,
+"merchant_payout": number,
+"notes": string | null,
+"number": number,
+"package_details": Json | null,
+"payment_method": Database["public"]['Enums']["payment_method"],
+"payment_method_id": string | null,
+"payment_status": Database["public"]['Enums']["payment_status"],
+"picked_up_at": string | null,
+"pickup_snapshot": Json | null,
+"placed_at": string,
+"ready_at": string | null,
+"service_fee": number,
+"status": Database["public"]['Enums']["order_status"],
+"total": number,
+"type": Database["public"]['Enums']["order_type"],
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "orders"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"confirm_payment":
+{ Args: { "p_amount": number,"p_gateway_fee"?: number,"p_order_id": string,"p_provider": string,"p_provider_ref": string,"p_raw"?: Json,"p_status": Database["public"]['Enums']["payment_status"] }; Returns: {
               "accepted_at": string | null,
 "address_snapshot": NonNullable<Json>,
 "assigned_at": string | null,
@@ -1579,17 +1707,28 @@ isOneToOne: false
 "dearmor":
 { Args: { "": string }; Returns: string
                            },
+"expire_pending_payments":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "gen_random_uuid":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
 "gen_salt":
 { Args: { "": string }; Returns: string
                            },
+"generate_owner_alerts":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "has_admin_role":
 { Args: { "roles": (Database["public"]['Enums']["admin_role"])[] }; Returns: boolean
                            },
 "haversine_km":
 { Args: { "lat1": number,"lat2": number,"lng1": number,"lng2": number }; Returns: number
+                           },
+"invitation_preview":
+{ Args: { "p_token": string }; Returns: {
+              "accepted": boolean,"email": string,"expires_at": string,"role": Database["public"]['Enums']["admin_role"]
+            }[]
                            },
 "is_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
@@ -1670,6 +1809,9 @@ isOneToOne: false
 { Args: { "p_category"?: Database["public"]['Enums']["merchant_category"],"p_lat": number,"p_lng": number,"p_radius_km"?: number }; Returns: {
               "category": Database["public"]['Enums']["merchant_category"],"cover_url": string,"delivery_fee": number,"distance_km": number,"featured": boolean,"id": string,"is_open": boolean,"logo_url": string,"name": string,"prep_max": number,"prep_min": number,"rating_avg": number,"rating_count": number,"slug": string,"tagline": string,"tags": (string)[]
             }[]
+                           },
+"owner_daily_summary":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "pgp_armor_headers":
 { Args: { "": string }; Returns: Record<string, unknown>[]

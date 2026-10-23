@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
+/*
+ * Tokens de YAVA. Valores espejo de `colors` en packages/shared/src/tokens.ts
+ * (CSS no puede importar TS; mantener sincronizado). En JS usar `colors` de @yava/shared.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --yv-blue: #1e5eff;
+  --yv-blue-dark: #1547c9;
+  --yv-blue-soft: #e8efff;
+  --yv-yellow: #ffc72c;
+  --yv-yellow-soft: #fff4d1;
+  --yv-red: #e5322d;
+  --yv-red-soft: #fde8e7;
+  --yv-green: #1f9d55;
+  --yv-green-soft: #e3f5ea;
+  --yv-orange: #f2994a;
+  --yv-orange-soft: #fdf0e3;
+  --yv-carbon: #1b1f24;
+  --yv-gray-900: #2b3139;
+  --yv-gray-700: #4b5563;
+  --yv-gray-500: #6b7280;
+  --yv-gray-400: #9ca3af;
+  --yv-gray-300: #d1d5db;
+  --yv-gray-200: #e5e7eb;
+  --yv-gray-100: #f3f4f6;
+  --yv-gray-50: #f9fafb;
+  --yv-white: #ffffff;
+
+  --background: var(--yv-gray-50);
+  --foreground: var(--yv-carbon);
+  --card: var(--yv-white);
+  --border: var(--yv-gray-200);
+  --muted: var(--yv-gray-500);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+
+  --color-blue: var(--yv-blue);
+  --color-blue-dark: var(--yv-blue-dark);
+  --color-blue-soft: var(--yv-blue-soft);
+  --color-yellow: var(--yv-yellow);
+  --color-yellow-soft: var(--yv-yellow-soft);
+  --color-red: var(--yv-red);
+  --color-red-soft: var(--yv-red-soft);
+  --color-green: var(--yv-green);
+  --color-green-soft: var(--yv-green-soft);
+  --color-orange: var(--yv-orange);
+  --color-orange-soft: var(--yv-orange-soft);
+  --color-carbon: var(--yv-carbon);
+  --color-gray-900: var(--yv-gray-900);
+  --color-gray-700: var(--yv-gray-700);
+  --color-gray-500: var(--yv-gray-500);
+  --color-gray-400: var(--yv-gray-400);
+  --color-gray-300: var(--yv-gray-300);
+  --color-gray-200: var(--yv-gray-200);
+  --color-gray-100: var(--yv-gray-100);
+  --color-gray-50: var(--yv-gray-50);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Foco visible y consistente (accesibilidad) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--yv-blue);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+@keyframes yv-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.yv-fade-in { animation: yv-fade-in 160ms ease-out; }
