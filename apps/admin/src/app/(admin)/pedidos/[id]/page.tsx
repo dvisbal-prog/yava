@@ -6,7 +6,7 @@ import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL, formatCOP, type Json } from "@yav
 import { requireSection } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fmtDateTime, fmtTime, fmtPercent } from "@/lib/format";
-import { canManageOrders } from "@/lib/roles";
+import { canAccess, canManageOrders } from "@/lib/roles";
 import { Card, CardBody, CardHeader, Note } from "@/components/ui/card";
 import { Badge, OrderStatusBadge, PAYMENT_METHOD_LABEL, PaymentStatusBadge, ORDER_STATUS_TONE } from "@/components/ui/badge";
 import { StatInline } from "@/components/ui/kpi";
@@ -195,14 +195,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <CardBody className="space-y-4">
               <Party label="Cliente" name={order.customer_name} phone={order.customer_phone} />
               {order.merchant_id ? (
-                <Party label="Comercio" name={order.merchant_name} href={`/comercios/${order.merchant_id}`} />
+                <Party label="Comercio" name={order.merchant_name} href={canAccess(ctx.role, "comercios") ? `/comercios/${order.merchant_id}` : undefined} />
               ) : pickup ? (
                 <div>
                   <p className="text-xs text-muted uppercase tracking-wide">Recogida</p>
                   <p className="text-sm">{pickup.line1}</p>
                 </div>
               ) : null}
-              <Party label="Repartidor" name={order.courier_name ?? "Sin asignar"} phone={order.courier_phone} href={order.courier_id ? `/repartidores/${order.courier_id}` : undefined} />
+              <Party label="Repartidor" name={order.courier_name ?? "Sin asignar"} phone={order.courier_phone} href={order.courier_id && canAccess(ctx.role, "repartidores") ? `/repartidores/${order.courier_id}` : undefined} />
               <div>
                 <p className="text-xs text-muted uppercase tracking-wide flex items-center gap-1">
                   <MapPin className="h-3 w-3" /> Entrega

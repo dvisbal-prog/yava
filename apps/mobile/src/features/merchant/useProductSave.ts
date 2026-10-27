@@ -5,11 +5,23 @@ import { publicUrl } from "@/lib/supabase";
 import type { ProductDraft, DraftPhoto } from "./productDraft";
 import { parsePrice, validateForPublish, useProductDraft } from "./productDraft";
 import { compressProductPhoto, uploadLocalFile } from "./upload";
-import type { ProductCategoryRow } from "./types";
+import type { ProductCategoryRow, ProductRow } from "./types";
+
+type ProductStatus = ProductRow["status"];
+
+export interface SaveResult {
+  productId: string;
+  status: ProductStatus;
+  /** Por qué no quedó como se pidió (falta un dato o falló alguna foto). */
+  reason?: string;
+  /** Alguna foto no se subió; las fotos con error se reintentan en el siguiente guardado. */
+  photosFailed: boolean;
+}
 
 /**
  * Guarda el producto (borrador o publicado), sube fotos con progreso y reintento,
- * y sincroniza grupos de opciones. Nunca marca publicado si falla alguna subida.
+ * y sincroniza grupos de opciones. Nunca marca publicado si falla alguna subida, y nunca despublica
+ * un producto existente al editarlo.
  */
 export function useProductSave() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -117,31 +129,43 @@ export function useProductSave() {
   }, []);
 
   /**
-   * Guarda todo. `publish` intenta publicar; si faltan requisitos o falla la subida, queda como draft
-   * y devuelve `{ status: "draft", reason }`.
+   * Guarda todo. `publish` intenta publicar; si faltan requisitos o falla la subida, un producto nuevo
+   * (o un borrador) queda como draft y devuelve `{ status: "draft", reason }`.
+   * Un producto que ya estaba publicado o pausado nunca vuelve a borrador al editarlo: si falla una foto
+   * se guardan los demás cambios, se conserva su estado y se devuelve `photosFailed` para reintentar.
    */
-  const save = useCallback(async (publish: boolean): Promise<{ productId: string; status: "draft" | "published" | "paused"; reason?: string }> => {
+  const save = useCallback(async (publish: boolean): Promise<SaveResult> => {
     setSaving(true);
     try {
       const d = useProductDraft.getState();
+      const prev = d.mode === "edit" ? d.initialStatus : null;
+      const wasLive = prev === "published" || prev === "paused";
+      if (wasLive) {
+        // Antes de escribir nada: un producto visible no puede quedar sin datos obligatorios.
+        const pre = validateForPublish(d, { pendingPhotosOk: true });
+        if (!pre.ok) throw new Error(`Para guardar los cambios falta: ${pre.missing.join(", ")}.`);
+      }
       const productId = await ensureProduct(d);
       const allUploaded = await uploadPhotos(d.merchantId ?? "", productId);
       const after = useProductDraft.getState();
       const urls = after.photos.filter((p) => p.upload === "done" && p.remoteUrl).map((p) => p.remoteUrl as string);
       await syncOptionGroups(after, productId);
-      let status: "draft" | "published" | "paused" = "draft";
+      let status: ProductStatus = wasLive && prev ? prev : "draft";
       let reason: string | undefined;
-      if (publish) {
-        const v = validateForPublish({ ...after, photos: after.photos });
-        if (!allUploaded) reason = "Alguna foto no se pudo subir. Reintenta para publicar.";
-        else if (!v.ok) reason = `Falta: ${v.missing.join(", ")}.`;
-        else status = after.status;
+      if (publish || wasLive) {
+        const v = validateForPublish(after);
+        if (!allUploaded) {
+          reason = wasLive
+            ? `Alguna foto no se pudo subir. Guardamos los demás cambios y el producto sigue ${prev === "paused" ? "pausado" : "publicado"}. Toca "Guardar cambios" para reintentar.`
+            : "Alguna foto no se pudo subir. Reintenta para publicar.";
+        } else if (!v.ok) reason = `Falta: ${v.missing.join(", ")}.`;
+        else if (publish) status = after.status;
       }
       const { error } = await supabase.from("products").update({ image_urls: urls, status }).eq("id", productId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product", productId] });
-      return { productId, status, reason };
+      return { productId, status, reason, photosFailed: !allUploaded };
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
+import { View, ScrollView, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as Clipboard from "expo-clipboard";
@@ -10,6 +10,7 @@ import { Screen, Text, Chip, Card, Button, EmptyState } from "@/components/ui";
 import { useCart } from "@/store/cart";
 import { AddressHeader, SectionHeader, ErrorState, CardsSkeleton, ListSkeleton } from "@/components/customer";
 import { usePromotions, useActiveCoupons, useMerchantsByIds, type CouponRow } from "@/features/customer";
+import { notify } from "@/lib/dialog";
 
 type Filter = "all" | MerchantCategory;
 
@@ -40,9 +41,9 @@ export default function Offers() {
     await Clipboard.setStringAsync(c.code);
     if (cartLines.length) {
       setCoupon(c.code);
-      Alert.alert("Cupón aplicado", `${c.code} se aplicará al pagar tu canasta.`);
+      notify("Cupón aplicado", `${c.code} se aplicará al pagar tu canasta.`);
     } else {
-      Alert.alert("Código copiado", `Usa ${c.code} al revisar tu pedido.`);
+      notify("Código copiado", `Usa ${c.code} al revisar tu pedido.`);
     }
   }
 

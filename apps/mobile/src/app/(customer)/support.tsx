@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { View, FlatList, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,14 +29,16 @@ export default function Support() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<FlatList<SupportMessageRow>>(null);
+  // Topic único por instancia: dos pantallas de soporte apiladas no deben compartir canal (mismo fallo que B3).
+  const channelSuffix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   useEffect(() => {
     if (!caseId) return;
-    const ch = supabase.channel(`support:${caseId}`)
+    const ch = supabase.channel(`support:${caseId}:${channelSuffix}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `case_id=eq.${caseId}` }, () => { void qc.invalidateQueries({ queryKey: ["support-messages", caseId] }); })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [caseId, qc]);
+    return () => { void supabase.removeChannel(ch); };
+  }, [caseId, qc, channelSuffix]);
 
   useEffect(() => { if (messages.data?.length) setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50); }, [messages.data?.length]);
 

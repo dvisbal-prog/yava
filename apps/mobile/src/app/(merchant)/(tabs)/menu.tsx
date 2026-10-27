@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Switch, Alert, Pressable, ScrollView } from "react-native";
+import { View, Switch, Pressable, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -8,6 +8,7 @@ import { colors, formatCOP, radius } from "@yava/shared";
 import { Screen, Text, SearchBar, Chip, Card, Badge, Button, EmptyState } from "@/components/ui";
 import { ErrorState, ListSkeleton } from "@/components/merchant/Rows";
 import { useMyMerchant, useMerchantProducts, useProductCategories, useUpdateProduct } from "@/features/merchant/useMerchant";
+import { notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 /** Pantalla 54 · Mi menú. */
@@ -25,7 +26,7 @@ export default function MerchantMenu() {
   const toggle = async (id: string, available: boolean) => {
     Haptics.selectionAsync().catch(() => {});
     try { await update.mutateAsync({ productId: id, patch: { status: available ? "published" : "paused" } }); }
-    catch (e) { Alert.alert("No se pudo cambiar", errorMessage(e)); }
+    catch (e) { notify("No se pudo cambiar", errorMessage(e)); }
   };
 
   return (

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { View, ScrollView, Pressable, StyleSheet, Alert, type LayoutChangeEvent } from "react-native";
+import { View, ScrollView, Pressable, StyleSheet, type LayoutChangeEvent } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,6 +10,7 @@ import { Text, Chip, Badge, Button, Skeleton, EmptyState, Card } from "@/compone
 import { useCart } from "@/store/cart";
 import { ProductRow, isProductAvailable, ErrorState, CartBar } from "@/components/customer";
 import { useMerchant, useMerchantMenu, useMerchantHours, useFavoriteIds, useToggleFavorite, useRequireAuth, etaLabel, nextOpeningLabel, type ProductRow as ProductRowData } from "@/features/customer";
+import { confirm } from "@/lib/dialog";
 
 /** Pantallas 12 (restaurante), 26 (tienda mercado), 30 (farmacia) y 43 (cerrado). */
 export default function MerchantScreen() {
@@ -54,10 +55,11 @@ export default function MerchantScreen() {
     const line = { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] };
     const res = cart.addLine(cartMerchant, line);
     if (res === "different_merchant") {
-      Alert.alert("Ya tienes una canasta", `Tu canasta tiene productos de ${cart.merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${p.name}?`, [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Vaciar canasta y agregar", style: "destructive", onPress: () => { cart.replaceWith(cartMerchant, line); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } },
-      ]);
+      void confirm("Ya tienes una canasta", `Tu canasta tiene productos de ${cart.merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${p.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
+        if (!ok) return;
+        cart.replaceWith(cartMerchant, line);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      });
       return;
     }
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

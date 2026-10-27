@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -11,6 +11,7 @@ import { useMyMerchant, useMerchantOrders, useMerchantSetStatus } from "@/featur
 import type { OrderItemRow } from "@/features/merchant/types";
 import { parseItemOptions } from "@/features/merchant/types";
 import { supabase } from "@/lib/supabase";
+import { notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 function elapsed(from: string | null | undefined, now: number): string {
@@ -44,7 +45,7 @@ export default function MerchantPrepare() {
     try {
       await setStatus.mutateAsync({ orderId, status: s });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } catch (e) { Alert.alert("No se pudo actualizar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo actualizar", errorMessage(e)); }
   };
 
   return (
@@ -52,7 +53,7 @@ export default function MerchantPrepare() {
       <Header title="En preparación" subtitle={`${orders.length} ${orders.length === 1 ? "pedido" : "pedidos"}`} />
       <View style={{ paddingHorizontal: 16 }}>
         {ordersQ.isLoading ? <ListSkeleton rows={2} height={160} /> : ordersQ.isError ? <ErrorState message={errorMessage(ordersQ.error)} onRetry={() => ordersQ.refetch()} /> : orders.length === 0 ? (
-          <EmptyState icon="flame-outline" title="Cocina despejada" body="Los pedidos aceptados aparecerán aquí con su temporizador." actionTitle="Ver pedidos nuevos" onAction={() => router.replace("/(merchant)/orders")} />
+          <EmptyState icon="flame-outline" title="Cocina despejada" body="Los pedidos aceptados aparecerán aquí con su temporizador." actionTitle="Ver pedidos nuevos" onAction={() => router.dismissTo("/(merchant)/orders")} />
         ) : orders.map((o) => {
           const items = (itemsQ.data ?? []).filter((it) => it.order_id === o.id);
           const mins = o.accepted_at ? (now - new Date(o.accepted_at).getTime()) / 60000 : 0;

@@ -1,5 +1,6 @@
 import type { Json } from "@yava/shared";
 import type { ServerClient } from "@/lib/supabase/server";
+import { errorText } from "@/lib/actions";
 import { bogotaDayEnd, bogotaDayStart, daysAgoISO, todayISO } from "@/lib/format";
 
 export interface Overview {
@@ -93,8 +94,33 @@ export function rangeBounds(range: RangeKey, fromParam?: string, toParam?: strin
   return { fromDay, toDay, from: bogotaDayStart(fromDay), to: bogotaDayEnd(toDay) };
 }
 
+/**
+ * Resumen de la plataforma. admin_overview exige rol admin (lanza 'No autorizado' si no):
+ * aquí el error se traduce a un mensaje legible. Lanza; las páginas que quieren degradar con gracia
+ * usan `tryFetchOverview`.
+ */
 export async function fetchOverview(supabase: ServerClient, from: string, to: string, city: string | null): Promise<Overview> {
-  const { data, error } = await supabase.rpc("admin_overview", { p_from: from, p_to: to, ...(city ? { p_city: city } : {}) });
-  if (error) throw new Error(error.message);
-  return parseOverview(data);
+  const res = await tryFetchOverview(supabase, from, to, city);
+  if (res.error !== null) throw new Error(res.error);
+  return res.overview;
+}
+
+export async function tryFetchOverview(
+  supabase: ServerClient,
+  from: string,
+  to: string,
+  city: string | null,
+): Promise<{ overview: Overview; error: null } | { overview: null; error: string }> {
+  try {
+    const { data, error } = await supabase.rpc("admin_overview", { p_from: from, p_to: to, ...(city ? { p_city: city } : {}) });
+    if (error) return { overview: null, error: overviewErrorText(error) };
+    return { overview: parseOverview(data), error: null };
+  } catch (e) {
+    return { overview: null, error: overviewErrorText(e) };
+  }
+}
+
+function overviewErrorText(e: unknown): string {
+  const msg = errorText(e, "No pudimos cargar el resumen.");
+  return msg === "No tienes permiso para esta acción." ? "Tu cuenta no tiene permiso para ver el resumen de la plataforma." : msg;
 }

@@ -33,6 +33,21 @@ export function parseBankAccount(v: unknown): BankAccount | null {
   };
 }
 
+/** Número de cuenta enmascarado: "···· 1234" (solo los últimos 4 dígitos). */
+export function maskAccountNumber(number: string | null | undefined): string {
+  const raw = (number ?? "").trim();
+  const digits = raw.replace(/\D/g, "");
+  const last4 = (digits || raw.replace(/\s/g, "")).slice(-4);
+  return last4 ? `···· ${last4}` : "";
+}
+
+/** "Bancolombia · Ahorros ···· 1234" para mostrar la cuenta sin exponer el número completo. */
+export function formatBankAccount(b: BankAccount): string {
+  const head = [b.bank, b.type].filter(Boolean).join(" · ");
+  const masked = maskAccountNumber(b.number);
+  return [head, masked].filter(Boolean).join(" ");
+}
+
 /** Dirección guardada en orders.address_snapshot. */
 export interface AddressSnapshot {
   label?: string;

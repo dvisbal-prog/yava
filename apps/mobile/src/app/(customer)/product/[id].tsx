@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
+import { View, ScrollView, Pressable, StyleSheet } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import { Text, Button, Input, Stepper, Badge, Skeleton, EmptyState, Card } from 
 import { useCart } from "@/store/cart";
 import { RadioRow, ErrorState, ProductTile, isProductAvailable } from "@/components/customer";
 import { useProduct, useMerchant, useMerchantMenu } from "@/features/customer";
+import { notify, confirm } from "@/lib/dialog";
 
 /** Pantallas 13 (detalle), 14 (complementos/opciones) y 44 (producto no disponible). */
 export default function ProductScreen() {
@@ -61,7 +62,7 @@ export default function ProductScreen() {
 
   function add() {
     if (!p || !m) return;
-    if (missing.length) { Alert.alert("Falta elegir", `Selecciona ${missing[0].name.toLowerCase()} para continuar.`); return; }
+    if (missing.length) { notify("Falta elegir", `Selecciona ${missing[0].name.toLowerCase()} para continuar.`); return; }
     const line: CartLine = {
       product_id: p.id, name: p.name, unit_price: p.price, qty, notes: notes.trim() || undefined,
       options: p.groups.flatMap((g) => g.options.filter((o) => (selected[g.id] ?? []).includes(o.id)).map((o) => ({ group_id: g.id, option_id: o.id, name: o.name, price_delta: o.price_delta }))),
@@ -69,10 +70,12 @@ export default function ProductScreen() {
     const cm = { id: m.id ?? "", name: m.name ?? "", delivery_fee: m.delivery_fee ?? 0, category: m.category ?? "food", prep_min: m.prep_min ?? 0, prep_max: m.prep_max ?? 0 };
     const res = cart.addLine(cm, line);
     if (res === "different_merchant") {
-      Alert.alert("Ya tienes una canasta", `Tu canasta tiene productos de ${cart.merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${p.name}?`, [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Vaciar canasta y agregar", style: "destructive", onPress: () => { cart.replaceWith(cm, line); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); router.back(); } },
-      ]);
+      void confirm("Ya tienes una canasta", `Tu canasta tiene productos de ${cart.merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${p.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
+        if (!ok) return;
+        cart.replaceWith(cm, line);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.back();
+      });
       return;
     }
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

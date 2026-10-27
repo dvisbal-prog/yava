@@ -21,11 +21,17 @@ function timeAgo(iso: string): string {
   return `Hace ${Math.round(h / 24)} d`;
 }
 
-export function AlertCard({ alert, onAcknowledge, acknowledging }: { alert: OwnerAlertRow; onAcknowledge?: () => void; acknowledging?: boolean }) {
+/**
+ * Tarjeta de alerta (103). Con `onPress` (destino según entity/entity_id) muestra la acción y el chevron;
+ * "Reconocer" sigue siendo un botón propio dentro de la tarjeta.
+ */
+export function AlertCard({ alert, onAcknowledge, acknowledging, onPress, actionLabel }: {
+  alert: OwnerAlertRow; onAcknowledge?: () => void; acknowledging?: boolean; onPress?: () => void; actionLabel?: string;
+}) {
   const sev = SEVERITY[alert.severity] ?? SEVERITY.info;
   const done = !!alert.acknowledged_at;
   return (
-    <Card style={{ marginBottom: 12, opacity: done ? 0.7 : 1 }}>
+    <Card style={{ marginBottom: 12, opacity: done ? 0.7 : 1 }} onPress={onPress}>
       <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
         <Ionicons name={sev.icon} size={22} color={sev.tone === "red" ? colors.red : sev.tone === "yellow" ? "#8A6400" : colors.blue} style={{ marginRight: 10, marginTop: 2 }} />
         <View style={{ flex: 1 }}>
@@ -34,12 +40,14 @@ export function AlertCard({ alert, onAcknowledge, acknowledging }: { alert: Owne
             <Text variant="small" tone="subtle">{timeAgo(alert.created_at)}</Text>
           </View>
           {alert.body ? <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>{alert.body}</Text> : null}
+          {onPress && actionLabel ? <Text variant="caption" tone="primary" style={{ marginTop: 4 }}>{actionLabel}</Text> : null}
           <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10 }}>
             <Badge label={done ? "Reconocida" : sev.label} tone={done ? "gray" : sev.tone} />
             <View style={{ flex: 1 }} />
             {!done && onAcknowledge ? <Button title="Reconocer" size="sm" variant="secondary" full={false} onPress={onAcknowledge} loading={acknowledging} /> : null}
           </View>
         </View>
+        {onPress ? <Ionicons name="chevron-forward" size={18} color={colors.gray400} style={{ marginLeft: 8, alignSelf: "center" }} /> : null}
       </View>
     </Card>
   );

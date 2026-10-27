@@ -24,7 +24,7 @@ const TOPICS: Topic[] = [
   ] },
   { icon: "map-outline", title: "Direcciones y cobertura", subtitle: "Direcciones, zonas de entrega y horarios", faqs: [
     { q: "¿Dónde entregan?", a: "Por ahora en Puerto Colombia y el norte de Barranquilla. Estamos ampliando la cobertura." },
-    { q: "¿En qué horario?", a: "Cada comercio define su horario; lo ves en su página. YAVA opera de 7:00 a.m. a 11:00 p.m." },
+    { q: "¿En qué horario?", a: "Cada comercio define su horario; lo ves en su página. YAVA opera de 7:00 a 23:00." },
   ] },
 ];
 
@@ -37,7 +37,8 @@ export default function Help() {
   const specific = useOrder(params.order);
   const phone = useSupportPhone();
   const [q, setQ] = useState("");
-  const [open, setOpen] = useState<string | null>(null);
+  const [openTopic, setOpenTopic] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<string | null>(null);
 
   const recent = specific.data ?? orders.data?.[0] ?? null;
   const topics = useMemo(() => {
@@ -46,7 +47,9 @@ export default function Help() {
     return TOPICS.map((t) => ({ ...t, faqs: t.faqs.filter((f) => f.q.toLowerCase().includes(term) || f.a.toLowerCase().includes(term)) })).filter((t) => t.faqs.length || t.title.toLowerCase().includes(term));
   }, [q]);
 
-  function toggle(key: string) { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(open === key ? null : key); }
+  // Tema y pregunta van en estados separados: abrir una pregunta no debe cerrar su tema.
+  function toggleTopic(key: string) { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpenTopic((cur) => (cur === key ? null : key)); }
+  function toggleFaq(key: string) { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpenFaq((cur) => (cur === key ? null : key)); }
 
   function chat() {
     const target = `/(customer)/support${recent?.id ? `?order=${recent.id}` : ""}`;
@@ -81,18 +84,18 @@ export default function Help() {
       <Text variant="heading" style={{ marginTop: 24, marginBottom: 8 }}>Temas de ayuda</Text>
       {topics.map((t) => (
         <View key={t.title} style={styles.topic}>
-          <Pressable onPress={() => toggle(t.title)} style={styles.topicHead}>
+          <Pressable onPress={() => toggleTopic(t.title)} style={styles.topicHead}>
             <View style={styles.iconBox}><Ionicons name={t.icon} size={20} color={colors.blue} /></View>
             <View style={{ flex: 1 }}><Text variant="bodyStrong">{t.title}</Text><Text variant="caption" tone="muted">{t.subtitle}</Text></View>
-            <Ionicons name={open === t.title ? "chevron-up" : "chevron-down"} size={18} color={colors.gray400} />
+            <Ionicons name={openTopic === t.title ? "chevron-up" : "chevron-down"} size={18} color={colors.gray400} />
           </Pressable>
-          {open === t.title || q.trim() ? t.faqs.map((f) => (
+          {openTopic === t.title || q.trim() ? t.faqs.map((f) => (
             <View key={f.q} style={styles.faq}>
-              <Pressable onPress={() => toggle(`${t.title}:${f.q}`)} style={{ flexDirection: "row", alignItems: "center" }}>
+              <Pressable onPress={() => toggleFaq(`${t.title}:${f.q}`)} style={{ flexDirection: "row", alignItems: "center" }}>
                 <Text variant="bodyStrong" style={{ flex: 1 }}>{f.q}</Text>
-                <Ionicons name={open === `${t.title}:${f.q}` ? "remove" : "add"} size={18} color={colors.blue} />
+                <Ionicons name={openFaq === `${t.title}:${f.q}` || q.trim() ? "remove" : "add"} size={18} color={colors.blue} />
               </Pressable>
-              {open === `${t.title}:${f.q}` || q.trim() ? <Text tone="muted" style={{ marginTop: 6 }}>{f.a}</Text> : null}
+              {openFaq === `${t.title}:${f.q}` || q.trim() ? <Text tone="muted" style={{ marginTop: 6 }}>{f.a}</Text> : null}
             </View>
           )) : null}
         </View>

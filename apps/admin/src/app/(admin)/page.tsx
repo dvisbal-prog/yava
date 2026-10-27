@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, Bike, CheckCircle2, ChevronRight, LifeBuoy, Store, TrendingUp, XCircle, Clock } from "lucide-react";
+import { AlertTriangle, Bike, CheckCircle2, ChevronRight, CloudOff, LifeBuoy, Store, TrendingUp, XCircle, Clock } from "lucide-react";
 import { formatCOP } from "@yava/shared";
 import { requireSection } from "@/lib/auth";
 import { getSelectedCity } from "@/lib/city";
 import { createClient } from "@/lib/supabase/server";
-import { fetchOverview, parseRange, rangeBounds } from "@/lib/overview";
+import { parseRange, rangeBounds, tryFetchOverview } from "@/lib/overview";
 import { fmtTime, fmtNumber } from "@/lib/format";
 import { canAccess } from "@/lib/roles";
-import { firstParam, type SearchParams } from "@/lib/utils";
+import { buildQuery, firstParam, type SearchParams } from "@/lib/utils";
 import { KPI } from "@/components/ui/kpi";
 import { Card, CardBody, CardHeader, Note } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { OrderStatusBadge } from "@/components/ui/badge";
 import { PageHeader, DemoNote } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ButtonLink } from "@/components/ui/button";
 import { HourlyChart } from "@/components/charts/hourly-chart";
 import { RangeChips } from "@/components/range-chips";
 import { RealtimeRefresh } from "@/components/realtime/realtime-refresh";
@@ -33,9 +35,15 @@ export default async function PanoramaPage({ searchParams }: { searchParams: Pro
     .limit(8);
   if (city) recent = recent.eq("city_id", city);
 
-  const [overview, { data: recentOrders }] = await Promise.all([fetchOverview(supabase, from, to, city), recent]);
+  const [{ overview, error: overviewError }, { data: recentOrders }] = await Promise.all([tryFetchOverview(supabase, from, to, city), recent]);
 
   const showFinance = canAccess(ctx.role, "finanzas");
+  const can = {
+    pedidos: canAccess(ctx.role, "pedidos"),
+    comercios: canAccess(ctx.role, "comercios"),
+    repartidores: canAccess(ctx.role, "repartidores"),
+    soporte: canAccess(ctx.role, "soporte"),
+  };
   const rangeTitle = range === "hoy" ? "del día" : range === "7d" ? "de los últimos 7 días" : "de los últimos 30 días";
 
   return (
@@ -43,40 +51,63 @@ export default async function PanoramaPage({ searchParams }: { searchParams: Pro
       <RealtimeRefresh table="orders" debounceMs={2000} />
       <PageHeader title="Panorama general" description="Actividad de la plataforma" actions={<RangeChips active={range} searchParams={sp} basePath="/" />} />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <KPI label="Ventas de comercios" value={formatCOP(overview.merchant_sales, true)} icon={Store} hint={`Ventas ${rangeTitle} · no son ingresos de YAVA`} />
-        {showFinance ? (
-          <KPI label="Ingresos YAVA" value={formatCOP(overview.yava_revenue, true)} icon={TrendingUp} tone="blue" hint="Comisiones + tarifas de servicio" />
-        ) : (
-          <KPI label="Ticket promedio" value={formatCOP(overview.avg_ticket, true)} icon={TrendingUp} tone="blue" hint="Productos por pedido entregado" />
-        )}
-        <KPI label="Pedidos entregados" value={fmtNumber(overview.delivered)} icon={CheckCircle2} tone="green" />
-        <KPI label="Pedidos activos" value={fmtNumber(overview.active)} icon={Clock} tone="yellow" hint={<Link href="/pedidos?estado=activos" className="text-blue hover:underline">Ver más ›</Link>} />
-      </div>
-
-      <Note tone="info">Las ventas de comercios no son ingresos de YAVA.</Note>
-
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader title="Operación ahora" description="Pedidos recibidos por hora" />
-          <CardBody>
-            <HourlyChart data={overview.hourly} />
-          </CardBody>
+      {overview === null ? (
+        <Card>
+          <EmptyState
+            icon={CloudOff}
+            title="No pudimos cargar el resumen"
+            description={overviewError}
+            action={
+              <ButtonLink href={`/${buildQuery(sp, {})}`} variant="outline">
+                Reintentar
+              </ButtonLink>
+            }
+          />
         </Card>
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-1">
-          <MiniStat icon={Store} value={overview.active_merchants} label="comercios activos" tone="blue" />
-          <MiniStat icon={Bike} value={overview.online_couriers} label="repartidores conectados" tone="green" />
-          <MiniStat icon={XCircle} value={overview.cancelled} label="cancelados" tone="red" />
-          <MiniStat icon={LifeBuoy} value={overview.open_cases} label="incidencias abiertas" tone="yellow" href={canAccess(ctx.role, "soporte") ? "/soporte" : undefined} />
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+            <KPI label="Ventas de comercios" value={formatCOP(overview.merchant_sales, true)} icon={Store} hint={`Ventas ${rangeTitle} · no son ingresos de YAVA`} />
+            {showFinance ? (
+              <KPI label="Ingresos YAVA" value={formatCOP(overview.yava_revenue, true)} icon={TrendingUp} tone="blue" hint="Comisiones + tarifas de servicio" />
+            ) : (
+              <KPI label="Ticket promedio" value={formatCOP(overview.avg_ticket, true)} icon={TrendingUp} tone="blue" hint="Productos por pedido entregado" />
+            )}
+            <KPI label="Pedidos entregados" value={fmtNumber(overview.delivered)} icon={CheckCircle2} tone="green" />
+            <KPI
+              label="Pedidos activos"
+              value={fmtNumber(overview.active)}
+              icon={Clock}
+              tone="yellow"
+              hint={can.pedidos ? <Link href="/pedidos?estado=activos" className="text-blue hover:underline">Ver más ›</Link> : undefined}
+            />
+          </div>
+
+          <Note tone="info">Las ventas de comercios no son ingresos de YAVA.</Note>
+
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+              <CardHeader title="Operación ahora" description="Pedidos recibidos por hora" />
+              <CardBody>
+                <HourlyChart data={overview.hourly} />
+              </CardBody>
+            </Card>
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-1">
+              <MiniStat icon={Store} value={overview.active_merchants} label="comercios activos" tone="blue" href={can.comercios ? "/comercios?estado=active" : undefined} />
+              <MiniStat icon={Bike} value={overview.online_couriers} label="repartidores conectados" tone="green" href={can.repartidores ? "/repartidores?tab=disponibles" : undefined} />
+              <MiniStat icon={XCircle} value={overview.cancelled} label="cancelados" tone="red" href={can.pedidos ? "/pedidos?estado=cancelled" : undefined} />
+              <MiniStat icon={LifeBuoy} value={overview.open_cases} label="incidencias abiertas" tone="yellow" href={can.soporte ? "/soporte" : undefined} />
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader
             title="Pedidos recientes"
             action={
-              canAccess(ctx.role, "pedidos") ? (
+              can.pedidos ? (
                 <Link href="/pedidos" className="text-[13px] text-blue hover:underline inline-flex items-center gap-0.5">
                   Ver todos <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
@@ -87,7 +118,7 @@ export default async function PanoramaPage({ searchParams }: { searchParams: Pro
             dense
             rows={recentOrders ?? []}
             rowKey={(r) => r.id ?? ""}
-            rowHref={canAccess(ctx.role, "pedidos") ? (r) => `/pedidos/${r.id}` : undefined}
+            rowHref={can.pedidos ? (r) => `/pedidos/${r.id}` : undefined}
             emptyTitle="Aún no hay pedidos"
             columns={[
               { key: "n", header: "Pedido", cell: (r) => <span className="font-medium">#{r.number}</span> },
@@ -107,17 +138,17 @@ export default async function PanoramaPage({ searchParams }: { searchParams: Pro
                 <AlertTriangle className="h-5 w-5" />
               </span>
               <div>
-                <p className="text-2xl font-bold text-carbon">{overview.merchants_to_review}</p>
+                <p className="text-2xl font-bold text-carbon">{overview ? overview.merchants_to_review : "—"}</p>
                 <p className="text-[13px] text-muted -mt-0.5">comercios por revisar</p>
               </div>
             </div>
             <p className="text-[13px] text-muted mt-3">Tienen documentos pendientes o están a la espera de aprobación.</p>
-            {canAccess(ctx.role, "comercios") ? (
+            {can.comercios ? (
               <Link href="/comercios?tab=revisar" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-blue hover:underline">
                 Revisar <ChevronRight className="h-4 w-4" />
               </Link>
             ) : null}
-            {overview.couriers_to_review > 0 && canAccess(ctx.role, "repartidores") ? (
+            {overview && overview.couriers_to_review > 0 && can.repartidores ? (
               <p className="mt-4 pt-4 border-t border-border text-[13px] text-gray-700">
                 <Link href="/repartidores?tab=revisar" className="text-blue hover:underline">
                   {overview.couriers_to_review} repartidor{overview.couriers_to_review === 1 ? "" : "es"} con documentación pendiente ›

@@ -52,6 +52,18 @@ export const COURIER_DOC_TYPES: { type: string; label: string; hint: string; req
 
 export const DOC_STATUS_LABEL: Record<CourierDocumentRow["status"], string> = { pending: "Pendiente", approved: "Aprobado", rejected: "Rechazado" };
 
+/** Enlaces públicos de Privacidad y Términos (panel web). */
+export const LEGAL_URLS = {
+  privacy: "https://yava-panel.vercel.app/legal/privacidad",
+  terms: "https://yava-panel.vercel.app/legal/terminos",
+} as const;
+
+/** Enmascara un número de cuenta o celular: "3001234567" → "···· 4567". */
+export function maskAccount(number: string | null | undefined): string {
+  const clean = (number ?? "").replace(/\s/g, "");
+  return clean ? `···· ${clean.slice(-4)}` : "";
+}
+
 export function formatKm(km: number | null | undefined): string {
   if (km == null) return "";
   if (km < 1) return `${Math.round(km * 1000)} m`;

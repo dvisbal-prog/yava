@@ -51,11 +51,11 @@ export default function Favorites() {
                 </Pressable>
               } />
             ))}
-            {products.data?.length ? (
+            {products.data?.products.length ? (
               <>
                 <SectionHeader title="De tus favoritos" style={{ marginTop: 24 }} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {products.data.map((p) => <ProductTile key={p.id} p={p} merchantName={rows.find((m) => m.id === p.merchant_id)?.name} onPress={() => router.push(`/(customer)/product/${p.id}` as never)} />)}
+                  {products.data.products.map((p) => <ProductTile key={p.id} p={p} merchantName={rows.find((m) => m.id === p.merchant_id)?.name} onPress={() => router.push(`/(customer)/product/${p.id}` as never)} />)}
                 </ScrollView>
               </>
             ) : null}

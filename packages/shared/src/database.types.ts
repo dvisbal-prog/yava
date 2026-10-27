@@ -1639,6 +1639,9 @@ isOneToOne: false
 "courier_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"courier_set_online":
+{ Args: { "p_online": boolean }; Returns: undefined
+                           },
 "courier_set_order_status":
 { Args: { "p_delivery_code"?: string,"p_order_id": string,"p_status": Database["public"]['Enums']["order_status"] }; Returns: {
               "accepted_at": string | null,
@@ -1695,6 +1698,9 @@ isOneToOne: false
                            },
 "courier_update_location":
 { Args: { "p_lat": number,"p_lng": number,"p_order_id"?: string }; Returns: undefined
+                           },
+"courier_update_settings":
+{ Args: { "p_bank_account"?: Json,"p_plate"?: string,"p_vehicle"?: Database["public"]['Enums']["vehicle_type"] }; Returns: undefined
                            },
 "coverage_for":
 { Args: { "p_lat": number,"p_lng": number }; Returns: {

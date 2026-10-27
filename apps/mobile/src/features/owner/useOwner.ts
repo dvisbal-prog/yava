@@ -2,14 +2,17 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/lib/query";
 import { useAuth } from "@/store/auth";
+import { isUnauthorized } from "@/lib/errors";
 import type { OrderSummaryRow, SettlementRow } from "@/features/merchant/types";
 import type { AdminOverview, OwnerAlertRow, RangeKey } from "./types";
-import { EMPTY_OVERVIEW, rangeFrom } from "./types";
+import { EMPTY_OVERVIEW, canSeeAlerts, rangeFrom } from "./types";
 
 export function useAdminOverview(range: RangeKey, cityId: string | null) {
   return useQuery({
     queryKey: ["admin-overview", range, cityId],
-    refetchInterval: 60_000,
+    // 'No autorizado' (0013: guard en admin_overview) no se arregla reintentando: se corta el reintento y el sondeo.
+    retry: (count, e) => !isUnauthorized(e) && count < 1,
+    refetchInterval: (query) => (query.state.error && isUnauthorized(query.state.error) ? false : 60_000),
     queryFn: async (): Promise<AdminOverview> => {
       const { data, error } = await supabase.rpc("admin_overview", { p_from: rangeFrom(range), p_to: new Date().toISOString(), p_city: cityId });
       if (error) throw error;
@@ -20,8 +23,10 @@ export function useAdminOverview(range: RangeKey, cityId: string | null) {
 }
 
 export function useOwnerAlerts(onlyPending = false) {
+  const enabled = useAuth((s) => canSeeAlerts(s.adminRole));
   return useQuery({
     queryKey: ["owner-alerts", onlyPending],
+    enabled,
     refetchInterval: 60_000,
     queryFn: async (): Promise<OwnerAlertRow[]> => {
       let q = supabase.from("owner_alerts").select("*").order("created_at", { ascending: false }).limit(100);

@@ -14,7 +14,7 @@ const PAYMENT_WAIT_MS = 45_000;
 /** Pantalla 20 · Pedido confirmado (también destino del redirect de Wompi). */
 export default function OrderConfirmed() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, retry } = useLocalSearchParams<{ id: string; retry?: string }>();
   const cart = useCart();
   const order = useOrder(id, { refetchInterval: 3000 });
   useRealtimeOrder(id);
@@ -36,8 +36,13 @@ export default function OrderConfirmed() {
   }, [o, waitingCard, cart]);
 
   useEffect(() => {
-    if (o?.payment_method === "card" && (o.payment_status === "failed" || o.status === "cancelled")) router.replace(`/(customer)/order/${id}/payment-failed` as never);
-  }, [o, id, router]);
+    if (o?.payment_method !== "card") return;
+    if (o.payment_status !== "failed" && o.status !== "cancelled") return;
+    // Reintento desde la pantalla 45: el "failed" es del intento anterior hasta que el pedido cambie después de `retry`.
+    const retryFrom = retry ? Date.parse(retry) : NaN;
+    if (o.status !== "cancelled" && !Number.isNaN(retryFrom) && (!o.updated_at || Date.parse(o.updated_at) <= retryFrom)) return;
+    router.replace(`/(customer)/order/${id}/payment-failed` as never);
+  }, [o, id, router, retry]);
 
   if (order.isLoading && !o) {
     return <Screen><View style={{ alignItems: "center", marginTop: 80, gap: 12 }}><Skeleton width={96} height={96} style={{ borderRadius: 48 }} /><Skeleton width="60%" height={24} /><Skeleton width="80%" height={14} /></View></Screen>;

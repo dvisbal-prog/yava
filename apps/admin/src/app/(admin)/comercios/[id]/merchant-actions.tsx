@@ -6,20 +6,28 @@ import { ReasonDialog, ActionButton } from "@/components/ui/reason-dialog";
 import { Field, Input } from "@/components/ui/field";
 import { reviewMerchantDocumentAction, setMerchantStatusAction, toggleProductAction, updateCommissionAction } from "../actions";
 
-export function MerchantStatusActions({ id, status }: { id: string; status: MerchantStatus }) {
+/**
+ * `approveBlocker`: motivo por el que aún no se puede aprobar (documentos sin aprobar).
+ * Aplica a solicitudes en revisión y rechazadas; reactivar un comercio pausado o suspendido no lo exige.
+ */
+export function MerchantStatusActions({ id, status, approveBlocker = null }: { id: string; status: MerchantStatus; approveBlocker?: string | null }) {
   const reviewing = status === "pending" || status === "under_review";
+  const blocked = (reviewing || status === "rejected") && !!approveBlocker;
   return (
     <div className="flex flex-wrap gap-2">
       {reviewing || status === "paused" || status === "suspended" || status === "rejected" ? (
-        <ReasonDialog
-          variant="primary"
-          trigger={<><Check className="h-4 w-4" aria-hidden /> {reviewing ? "Aprobar" : "Activar"}</>}
-          title={reviewing ? "Aprobar comercio" : "Reactivar comercio"}
-          description="El comercio podrá recibir pedidos. Se le notifica el cambio."
-          action={setMerchantStatusAction}
-          hidden={{ id, status: "active" }}
-          confirmLabel={reviewing ? "Aprobar" : "Activar"}
-        />
+        <span title={blocked ? (approveBlocker ?? undefined) : undefined} className="inline-flex">
+          <ReasonDialog
+            variant="primary"
+            trigger={<><Check className="h-4 w-4" aria-hidden /> {reviewing ? "Aprobar" : "Activar"}</>}
+            title={reviewing ? "Aprobar comercio" : "Reactivar comercio"}
+            description="El comercio podrá recibir pedidos. Se le notifica el cambio."
+            action={setMerchantStatusAction}
+            hidden={{ id, status: "active" }}
+            confirmLabel={reviewing ? "Aprobar" : "Activar"}
+            disabled={blocked}
+          />
+        </span>
       ) : null}
       {reviewing ? (
         <ReasonDialog

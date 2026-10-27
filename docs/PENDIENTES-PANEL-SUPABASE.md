@@ -1,20 +1,22 @@
-# Pendientes en el panel de Supabase (proyecto "Yava App" · dgebycmouxjfuwtnhxmu)
+# Estado de Supabase y despliegues (proyecto "Yava App" · dgebycmouxjfuwtnhxmu)
 
-Todo lo que se puede hacer por SQL y API ya está desplegado. Estos pasos son solo del panel web (5 a 10 minutos):
+## Hecho (26 oct 2026)
+- Esquema, RLS, RPCs, vistas, buckets, Realtime y datos demo (migraciones 0001–0011).
+- **Cron** (migración 0012): `pg_cron` llama directamente `expire_pending_payments()` cada 5 min, `generate_owner_alerts()` cada 10 min y `owner_daily_summary()` a las 06:30 Bogotá. Ya no hace falta `supabase/cron.sql` ni pegar la service role key.
+- **Push** (migración 0012): trigger `notifications_send_push` → Edge Function `send-push` con el header `x-yava-hook` (secreto en Vault `yava_internal_hook_secret`). Reemplaza el Database Webhook del panel. Probado: respuesta 200.
+- **Admin web** en Vercel: https://yava-panel.vercel.app (proyecto `yava-admin`, Root Directory `apps/admin`). `yava-admin.vercel.app` es de otra cuenta.
+- **Vista web del app** en Vercel: https://yava-app.vercel.app (proyecto `yava-app`, export `expo export -p web`, SPA).
+- **Migración 0013** (auditoría): repartidor sin UPDATE directo (RPC `courier_set_online` / `courier_update_settings`, se acabó la recursión de RLS), entrega activa desde que se acepta, `admin_overview`/`merchant_dashboard`/`audit` con permisos, columnas protegidas en `merchants`, `confirm_payment` y tareas internas solo para service_role, `anonymize_account` solo para la propia cuenta. Verificada en vivo con los usuarios demo (12/12).
+- **EAS**: proyecto `@zds-agency/yava` (2e5ba82e-1aa1-4698-a00e-745181c1f4b4), variables `EXPO_PUBLIC_SUPABASE_*` en development/preview/production, keystore Android en la nube.
 
-1. **Authentication → Providers**
-   - Phone: activar, proveedor Twilio Verify (o MessageBird). Plantilla: `Tu código YAVA es {{ .Code }}`.
-   - Google: activar con los Client IDs (web, iOS, Android) de Google Cloud.
-   - Apple: activar con Services ID, Team ID, Key ID y la llave .p8.
-   - URL Configuration → Redirect URLs: `yava://auth/callback`, `https://<dominio-admin>/auth/callback`.
-   - Attack protection: activar "Leaked password protection".
-2. **Edge Functions → Secrets**: `WOMPI_EVENTS_SECRET` (del panel de Wompi). Las funciones ya están desplegadas:
-   `wompi-webhook`, `send-push`, `scheduled-jobs`, `delete-account` (y `admin-tools`, ya desactivada).
-3. **Database → Webhooks → Create**: tabla `notifications`, evento INSERT, tipo "Supabase Edge Function" → `send-push`,
-   header `Authorization: Bearer <service_role key>`. Esto activa las notificaciones push.
-4. **Database → Extensions**: activar `pg_cron`. Luego en SQL Editor ejecutar `supabase/cron.sql` reemplazando `<PROYECTO>` por
-   `dgebycmouxjfuwtnhxmu` y `<SERVICE_ROLE_KEY>` por la llave service role (Settings → API).
-5. **Wompi**: URL de eventos = `https://dgebycmouxjfuwtnhxmu.supabase.co/functions/v1/wompi-webhook`.
+## Falta
+1. **Auth → URL Configuration** (requiere aprobación para tocar la configuración remota): Site URL `https://yava-panel.vercel.app`; Redirect URLs `yava://auth/callback`, `yava://**`, `https://yava-panel.vercel.app/**`, `https://yava-app.vercel.app/**`. Plantilla SMS `Tu código YAVA es {{ .Code }}`. Leaked password protection.
+2. **Proveedores de Auth** (requieren cuentas externas):
+   - Phone: Twilio Verify (o MessageBird).
+   - Google: Client IDs web, iOS y Android de Google Cloud.
+   - Apple: Services ID, Team ID, Key ID y llave .p8.
+3. **Wompi**: secreto `WOMPI_EVENTS_SECRET` en Edge Functions y URL de eventos `https://dgebycmouxjfuwtnhxmu.supabase.co/functions/v1/wompi-webhook`. Llave pública → `EXPO_PUBLIC_WOMPI_PUBLIC_KEY`.
+4. **Google Maps**: llaves para iOS y Android (`GOOGLE_MAPS_IOS_KEY`, `GOOGLE_MAPS_ANDROID_KEY`).
 
 ## Datos de conexión (públicos, van en las apps)
 - URL: `https://dgebycmouxjfuwtnhxmu.supabase.co`

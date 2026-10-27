@@ -66,3 +66,10 @@ export function bogotaDayStart(day: string): string {
 export function bogotaDayEnd(day: string): string {
   return `${day}T23:59:59.999-05:00`;
 }
+
+/** Número de cuenta enmascarado: "···· 1234". Nunca muestra más de los últimos 4 dígitos. */
+export function maskAccount(number: string | null | undefined): string {
+  const digits = (number ?? "").replace(/\s+/g, "");
+  if (!digits) return "—";
+  return `···· ${digits.slice(-4)}`;
+}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, radius } from "@yava/shared";
 import { Screen, Header, Text, EmptyState } from "@/components/ui";
@@ -7,6 +7,7 @@ import { useAuth } from "@/store/auth";
 import { useCart } from "@/store/cart";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
+import { notify, confirm } from "@/lib/dialog";
 import { OrderCard, ErrorState, ListSkeleton } from "@/components/customer";
 import { useMyOrders, splitOrders, loginHref, type OrderSummaryRow, type OrderItemRow, type MerchantPublic } from "@/features/customer";
 import { useRealtimeOrders } from "@/hooks/useRealtimeOrder";
@@ -31,7 +32,7 @@ export default function Orders() {
       ]);
       if (ie) throw ie; if (me) throw me;
       const merchant = m as MerchantPublic | null;
-      if (!merchant) { Alert.alert("Comercio no disponible", "Este comercio ya no está activo."); return; }
+      if (!merchant) { notify("Comercio no disponible", "Este comercio ya no está activo."); return; }
       const cm = { id: merchant.id ?? "", name: merchant.name ?? "", delivery_fee: merchant.delivery_fee ?? 0, category: merchant.category ?? "food", prep_min: merchant.prep_min ?? 0, prep_max: merchant.prep_max ?? 0 };
       const doIt = () => {
         cart.clear();
@@ -42,10 +43,11 @@ export default function Orders() {
         });
         router.push("/(customer)/cart" as never);
       };
-      if (cart.lines.length && cart.merchant?.id !== cm.id) Alert.alert("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", [{ text: "Cancelar", style: "cancel" }, { text: "Reemplazar", style: "destructive", onPress: doIt }]);
-      else doIt();
+      if (cart.lines.length && cart.merchant?.id !== cm.id) {
+        if (await confirm("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", { okText: "Reemplazar", destructive: true })) doIt();
+      } else doIt();
     } catch (e) {
-      Alert.alert("No se pudo repetir el pedido", errorMessage(e));
+      notify("No se pudo repetir el pedido", errorMessage(e));
     }
   }
 

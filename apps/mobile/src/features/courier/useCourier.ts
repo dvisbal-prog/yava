@@ -4,7 +4,7 @@ import * as Location from "expo-location";
 import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/lib/query";
 import { useAuth } from "@/store/auth";
-import type { OrderRow, OrderSummaryRow } from "@/features/merchant/types";
+import type { OrderRow, OrderSummaryRow, BankAccount } from "@/features/merchant/types";
 import type { CourierRow, CourierDocumentRow, CourierWithdrawalRow, OrderMessageRow, CourierDashboard, AvailableOrder } from "./types";
 import { EMPTY_COURIER_DASHBOARD } from "./types";
 
@@ -125,22 +125,39 @@ export function useCourierSetStatus() {
   });
 }
 
+/**
+ * Conectar / desconectar al repartidor. Usa el RPC `courier_set_online` (la RLS ya no permite
+ * UPDATE directo sobre `couriers`). El servidor rechaza `true` si la cuenta no está activa.
+ */
 export function useSetOnline() {
-  const uid = useAuth((s) => s.session?.user.id);
   return useMutation({
     mutationFn: async (online: boolean) => {
-      const { error } = await supabase.from("couriers").update({ is_online: online }).eq("user_id", uid);
+      const { error } = await supabase.rpc("courier_set_online", { p_online: online });
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["courier"] }),
   });
 }
 
+/** Campos que el repartidor puede cambiar de su propia fila (vía `courier_update_settings`). */
+export interface CourierSettingsPatch {
+  vehicle?: CourierRow["vehicle"];
+  plate?: string;
+  bank_account?: BankAccount;
+}
+
+/**
+ * Actualiza vehículo, placa o cuenta de retiro con el RPC `courier_update_settings`.
+ * Solo se aplican los campos presentes; el resto queda igual en el servidor.
+ */
 export function useUpdateCourier() {
-  const uid = useAuth((s) => s.session?.user.id);
   return useMutation({
-    mutationFn: async (patch: Partial<CourierRow>) => {
-      const { error } = await supabase.from("couriers").update(patch).eq("user_id", uid);
+    mutationFn: async (patch: CourierSettingsPatch) => {
+      const { error } = await supabase.rpc("courier_update_settings", {
+        p_vehicle: patch.vehicle ?? null,
+        p_plate: patch.plate ?? null,
+        p_bank_account: patch.bank_account ?? null,
+      });
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["courier"] }),

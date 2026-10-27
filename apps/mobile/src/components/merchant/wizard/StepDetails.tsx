@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { View, ScrollView, Pressable, Alert } from "react-native";
+import { View, ScrollView, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { colors, formatCOP } from "@yava/shared";
 import { Text, Input, Chip, Button, ListRow } from "@/components/ui";
 import { useProductDraft, parsePrice, validateDraftBasics } from "@/features/merchant/productDraft";
 import { useProductCategories } from "@/features/merchant/useMerchant";
+import { notify } from "@/lib/dialog";
 import { WizardFrame, FieldLabel } from "./WizardFrame";
 
 /** Paso 73 · Datos del producto (también formulario de edición 55). */
@@ -23,7 +24,7 @@ export function StepDetails({ onBack, onSaveDraft, onSaveEdit, onDelete, saving 
 
   const next = () => {
     setTouched(true);
-    if (!v.ok) { Alert.alert("Completa los datos", `Falta: ${v.missing.join(", ")}.`); return; }
+    if (!v.ok) { notify("Completa los datos", `Falta: ${v.missing.join(", ")}.`); return; }
     d.setStep(d.photos.length ? "organize" : "source");
   };
 
@@ -40,7 +41,7 @@ export function StepDetails({ onBack, onSaveDraft, onSaveEdit, onDelete, saving 
   );
 
   return (
-    <WizardFrame title={isEdit ? "Editar producto" : "Nuevo producto"} step="details" onBack={onBack} footer={footer} badge={isEdit ? (d.status === "paused" ? "Pausado" : "Publicado") : "Borrador"}>
+    <WizardFrame title={isEdit ? "Editar producto" : "Nuevo producto"} step="details" onBack={onBack} footer={footer} badge={isEdit && d.initialStatus !== "draft" ? (d.status === "paused" ? "Pausado" : "Publicado") : "Borrador"}>
       <Input label="Nombre" placeholder="Ceviche tropical" value={d.name} onChangeText={(t) => d.patch({ name: t })} error={touched && !d.name.trim() ? "Escribe el nombre" : null} />
       <FieldLabel>Categoría</FieldLabel>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ paddingRight: 8 }}>

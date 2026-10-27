@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Alert, Linking } from "react-native";
+import { View, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,6 +11,7 @@ import { uploadLocalFile } from "@/features/merchant/upload";
 import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/lib/query";
 import { useAuth } from "@/store/auth";
+import { notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 const DOC_LABEL: Record<string, string> = { rut: "RUT", camara_comercio: "Cámara de comercio", cedula: "Cédula del representante" };
@@ -40,7 +41,7 @@ export default function MerchantReview() {
     if (!merchant) return;
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert("Sin acceso a la galería", "Permite el acceso en Ajustes para subir documentos."); return; }
+      if (!perm.granted) { notify("Sin acceso a la galería", "Permite el acceso en Ajustes para subir documentos."); return; }
       const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9 });
       if (res.canceled || !res.assets.length) return;
       const path = `${merchant.id}/${type}-${Date.now().toString(36)}.jpg`;
@@ -48,7 +49,7 @@ export default function MerchantReview() {
       const { error } = await supabase.from("merchant_documents").insert({ merchant_id: merchant.id, doc_type: type, file_path: path });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["merchant-documents", merchant.id] });
-    } catch (e) { Alert.alert("No se pudo subir", errorMessage(e)); }
+    } catch (e) { notify("No se pudo subir", errorMessage(e)); }
   };
 
   if (merchantQ.isLoading) {

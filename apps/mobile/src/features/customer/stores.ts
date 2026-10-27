@@ -5,7 +5,7 @@ import type { CustomerPaymentChoice } from "./types";
 export type SortOption = "recommended" | "fastest" | "rating";
 export interface MerchantFilters {
   sort: SortOption;
-  maxTime: 30 | 45 | null;
+  maxTime: 30 | 35 | 45 | null;
   delivery: "free" | 3000 | null;
   minRating: 4.5 | null;
   openNow: boolean;
@@ -32,12 +32,15 @@ export const useMerchantFilters = create<FiltersState>()((set, get) => ({
 interface CheckoutState {
   method: CustomerPaymentChoice;
   paymentMethodId: string | null;
+  /** Marca de tiempo de la última elección (sirve para saber si el usuario eligió algo en Métodos de pago). */
+  selectedAt: number;
   setMethod: (method: CustomerPaymentChoice, paymentMethodId?: string | null) => void;
 }
 export const useCheckout = create<CheckoutState>()((set) => ({
   method: "cash",
   paymentMethodId: null,
-  setMethod: (method, paymentMethodId = null) => set({ method, paymentMethodId }),
+  selectedAt: 0,
+  setMethod: (method, paymentMethodId = null) => set({ method, paymentMethodId, selectedAt: Date.now() }),
 }));
 
 /* ---------- Borrador de envío (pantallas 31–32) ---------- */

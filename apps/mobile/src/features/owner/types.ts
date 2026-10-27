@@ -1,4 +1,4 @@
-import type { Tables } from "@yava/shared";
+import type { AdminRole, Tables } from "@yava/shared";
 
 export type OwnerAlertRow = Tables<"owner_alerts">;
 export type CitySummaryRow = Tables<"city_summary">;
@@ -65,4 +65,67 @@ export function rangeTitle(key: RangeKey): string {
   return `${RANGE_LABEL[key]} · hasta ${today}`;
 }
 
-export const ADMIN_URL = process.env.EXPO_PUBLIC_ADMIN_URL ?? "https://admin.yava.app";
+/** Panel web (Next.js). EXPO_PUBLIC_ADMIN_URL lo sobrescribe; sin barra final. */
+export const ADMIN_URL = (process.env.EXPO_PUBLIC_ADMIN_URL || "https://yava-panel.vercel.app").replace(/\/+$/, "");
+
+/** Rutas del panel web (apps/admin/src/app/(admin)). */
+export const ADMIN_PATHS = {
+  orders: "/pedidos",
+  merchants: "/comercios",
+  couriers: "/repartidores",
+  settlements: "/finanzas/liquidaciones",
+  reconciliation: "/finanzas/conciliacion",
+  support: "/soporte",
+  team: "/equipo",
+} as const;
+
+/** Roles de admin que usan la app de owners; el resto trabaja en el panel web. */
+export const OWNER_APP_ROLES: readonly AdminRole[] = ["owner", "finance"];
+export function canUseOwnerApp(role: AdminRole | null | undefined): boolean {
+  return !!role && OWNER_APP_ROLES.includes(role);
+}
+
+/** owner_alerts solo es legible por el rol owner (RLS "alerts read" = is_owner()). */
+export function canSeeAlerts(role: AdminRole | null | undefined): boolean {
+  return role === "owner";
+}
+
+/** Secciones del panel web que solo ve el owner (equipo y soporte no están en el rol finanzas). */
+export function canOpenOwnerOnlySections(role: AdminRole | null | undefined): boolean {
+  return role === "owner";
+}
+
+export interface AlertTarget { path: string; label: string }
+
+/**
+ * Destino de una alerta en el panel web según `entity`. Con `entity_id` abre el detalle;
+ * sin él, el listado de la sección. null si la entidad no tiene página.
+ */
+export function alertTarget(a: Pick<OwnerAlertRow, "entity" | "entity_id">): AlertTarget | null {
+  const id = a.entity_id ? encodeURIComponent(a.entity_id) : null;
+  switch (a.entity) {
+    case "order":
+    case "orders":
+    case "orders_unassigned":
+    case "orders_delayed":
+      return { path: id ? `${ADMIN_PATHS.orders}/${id}` : ADMIN_PATHS.orders, label: "Revisar con operaciones" };
+    case "merchant":
+    case "merchants":
+      return { path: id ? `${ADMIN_PATHS.merchants}/${id}` : ADMIN_PATHS.merchants, label: id ? "Ver solicitud" : "Ver solicitudes" };
+    case "courier":
+    case "couriers":
+      return { path: id ? `${ADMIN_PATHS.couriers}/${id}` : ADMIN_PATHS.couriers, label: id ? "Ver solicitud" : "Ver solicitudes" };
+    case "settlement":
+    case "settlements":
+      return { path: id ? `${ADMIN_PATHS.settlements}/${id}` : ADMIN_PATHS.settlements, label: "Ver liquidación" };
+    case "support_case":
+    case "support_cases":
+    case "support":
+      return { path: id ? `${ADMIN_PATHS.support}/${id}` : ADMIN_PATHS.support, label: "Ver caso" };
+    case "payment":
+    case "payments":
+      return { path: ADMIN_PATHS.reconciliation, label: "Ver conciliación" };
+    default:
+      return null;
+  }
+}

@@ -1,13 +1,14 @@
 import React, { useMemo } from "react";
-import { View, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
+import { View, ScrollView, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, formatCOP, lineTotal } from "@yava/shared";
+import { colors, radius, formatCOP, lineTotal, computeTotals } from "@yava/shared";
 import { Screen, Header, Text, Button, Input, Stepper, Divider, EmptyState, Badge, Card } from "@/components/ui";
 import { useCart } from "@/store/cart";
-import { ProductTile, isProductAvailable, PriceRow } from "@/components/customer";
+import { ProductTile, isProductAvailable, PriceBreakdown } from "@/components/customer";
 import { useMerchantMenu, useProductsByIds, useRequireAuth, etaLabel } from "@/features/customer";
+import { notify, confirm } from "@/lib/dialog";
 
 /** Pantallas 15 (Tu canasta), 42 (canasta vacía) y 44 (producto no disponible en la canasta). */
 export default function Cart() {
@@ -30,7 +31,8 @@ export default function Cart() {
   }, [fresh.data, ids]);
 
   const suggestions = useMemo(() => (menu.data?.products ?? []).filter((p) => isProductAvailable(p) && !ids.includes(p.id)).slice(0, 8), [menu.data, ids]);
-  const subtotal = cart.subtotal();
+  // Envío + servicio estimados (pantallas 28/44). El cupón se aplica en "Revisar y pagar"; el servidor confirma el total.
+  const totals = useMemo(() => computeTotals({ lines: cart.lines, deliveryFee: cart.merchant?.delivery_fee ?? 0 }), [cart.lines, cart.merchant?.delivery_fee]);
 
   function addSuggestion(p: { id: string; name: string; price: number }) {
     if (!cart.merchant) return;
@@ -39,12 +41,12 @@ export default function Cart() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
-  function clear() {
-    Alert.alert("Vaciar canasta", "¿Quieres quitar todos los productos?", [{ text: "Cancelar", style: "cancel" }, { text: "Vaciar", style: "destructive", onPress: () => cart.clear() }]);
+  async function clear() {
+    if (await confirm("Vaciar canasta", "¿Quieres quitar todos los productos?", { okText: "Vaciar", destructive: true })) cart.clear();
   }
 
   function continueToCheckout() {
-    if (unavailable.size) { Alert.alert("Revisa tu canasta", "Elimina o reemplaza los productos no disponibles para continuar."); return; }
+    if (unavailable.size) { notify("Revisa tu canasta", "Elimina o reemplaza los productos no disponibles para continuar."); return; }
     if (!requireAuth("/(customer)/checkout")) return;
     router.push("/(customer)/checkout" as never);
   }
@@ -60,15 +62,9 @@ export default function Cart() {
 
   return (
     <Screen padded={false} footer={
-      <View>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
-          <Text variant="bodyStrong">Subtotal</Text>
-          <Text variant="heading">{formatCOP(subtotal)}</Text>
-        </View>
-        <Button title="Continuar" onPress={continueToCheckout} disabled={unavailable.size > 0} right={<Text variant="bodyStrong" tone="inverse" style={{ marginLeft: 8 }}>· {formatCOP(subtotal)}</Text>} />
-      </View>
+      <Button title="Continuar" onPress={continueToCheckout} disabled={unavailable.size > 0} right={<Text variant="bodyStrong" tone="inverse" style={{ marginLeft: 8 }}>· {formatCOP(totals.total)}</Text>} />
     }>
-      <Header title="Tu canasta" right={<Pressable onPress={clear} hitSlop={10}><Ionicons name="trash-outline" size={20} color={colors.gray500} /></Pressable>} />
+      <Header title="Tu canasta" right={<Pressable onPress={() => { void clear(); }} hitSlop={10}><Ionicons name="trash-outline" size={20} color={colors.gray500} /></Pressable>} />
       <View style={{ paddingHorizontal: 16 }}>
         <Pressable onPress={() => router.push(`/(customer)/merchant/${cart.merchant?.id}` as never)} style={styles.merchant}>
           <View style={{ flex: 1 }}>
@@ -116,8 +112,8 @@ export default function Cart() {
         ) : null}
 
         <Divider space={20} />
-        <PriceRow label="Productos" value={formatCOP(subtotal)} />
-        <Text variant="caption" tone="subtle">El envío y el servicio se calculan al continuar.</Text>
+        <Text variant="heading" style={{ marginBottom: 6 }}>Resumen de pago</Text>
+        <PriceBreakdown subtotal={totals.subtotal} deliveryFee={totals.deliveryFee} serviceFee={totals.serviceFee} discount={totals.discount} total={totals.total} />
         <View style={{ height: 16 }} />
       </View>
     </Screen>

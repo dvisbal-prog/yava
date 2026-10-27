@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Alert, Linking } from "react-native";
+import { View, Linking, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/lib/query";
 import { useAuth } from "@/store/auth";
 import { errorMessage } from "@/lib/errors";
+import { alert, notify } from "@/lib/dialog";
 
 /** Pantalla 58 · Verifica tus documentos. */
 export default function CourierDocuments() {
@@ -38,7 +39,10 @@ export default function CourierDocuments() {
     try {
       const perm = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert("Sin permiso", `Permite el acceso a la ${source === "camera" ? "cámara" : "galería"} en Ajustes o usa el otro método.`, [
+        const msg = `Permite el acceso a la ${source === "camera" ? "cámara" : "galería"} en Ajustes o usa el otro método.`;
+        // En web no hay Ajustes del sistema ni elección de 3 botones: solo informamos.
+        if (Platform.OS === "web") { notify("Sin permiso", msg); return; }
+        alert("Sin permiso", msg, [
           { text: "Abrir ajustes", onPress: () => Linking.openSettings().catch(() => {}) },
           { text: source === "camera" ? "Usar galería" : "Usar cámara", onPress: () => upload(type, source === "camera" ? "gallery" : "camera") },
           { text: "Cancelar", style: "cancel" },
@@ -56,18 +60,31 @@ export default function CourierDocuments() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       queryClient.invalidateQueries({ queryKey: ["courier", "documents"] });
     } catch (e) {
-      Alert.alert("No se pudo subir", errorMessage(e));
+      notify("No se pudo subir", errorMessage(e));
     } finally { setUploading(null); }
   };
 
-  const choose = (type: string) => Alert.alert("Subir documento", "¿Cómo quieres subirlo?", [
-    { text: "Tomar foto", onPress: () => upload(type, "camera") },
-    { text: "Elegir de la galería", onPress: () => upload(type, "gallery") },
-    { text: "Cancelar", style: "cancel" },
-  ]);
+  const choose = (type: string) => {
+    // En web el selector de archivos ya permite cámara o archivo: vamos directo, sin elección de 3 botones.
+    if (Platform.OS === "web") { upload(type, "gallery"); return; }
+    alert("Subir documento", "¿Cómo quieres subirlo?", [
+      { text: "Tomar foto", onPress: () => upload(type, "camera") },
+      { text: "Elegir de la galería", onPress: () => upload(type, "gallery") },
+      { text: "Cancelar", style: "cancel" },
+    ]);
+  };
+
+  /** "Atrás": volver a donde vino (Perfil, registro…) y, sin historial, a la pantalla que toca según el estado. */
+  const goBack = () => {
+    if (router.canGoBack()) { router.back(); return; }
+    const status = courierQ.data?.status;
+    if (status === "active") router.replace("/(courier)/profile");
+    else if (status === "under_review" || status === "suspended") router.replace("/(onboarding)/courier-review");
+    else router.replace("/(onboarding)/courier-register");
+  };
 
   const submit = async () => {
-    if (!requiredDone) { Alert.alert("Faltan documentos", "Sube todos los documentos obligatorios para enviar a revisión."); return; }
+    if (!requiredDone) { notify("Faltan documentos", "Sube todos los documentos obligatorios para enviar a revisión."); return; }
     setSubmitting(true);
     try {
       const { error } = await supabase.rpc("courier_submit_for_review");
@@ -77,7 +94,7 @@ export default function CourierDocuments() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.replace("/(onboarding)/courier-review");
     } catch (e) {
-      Alert.alert("No se pudo enviar", errorMessage(e));
+      notify("No se pudo enviar", errorMessage(e));
     } finally { setSubmitting(false); }
   };
 
@@ -93,7 +110,7 @@ export default function CourierDocuments() {
   return (
     <Screen footer={<Button title={alreadySubmitted ? "Ver estado de mi cuenta" : "Enviar a revisión"} onPress={alreadySubmitted ? () => router.replace("/(onboarding)/courier-review") : submit} loading={submitting} disabled={!alreadySubmitted && !requiredDone} />}
       refreshing={docsQ.isFetching} onRefresh={() => docsQ.refetch()}>
-      <Header title="Verifica tus documentos" onBack={() => router.replace("/(onboarding)/courier-register")} />
+      <Header title="Verifica tus documentos" onBack={goBack} />
       <Text variant="caption" tone="primary" style={{ fontWeight: "600", marginTop: 8 }}>Paso 2 de 3</Text>
       <Text tone="muted" style={{ marginTop: 4, marginBottom: 16 }}>Sube los siguientes documentos para habilitar tu cuenta como repartidor en YAVA.</Text>
       {types.map((t) => {

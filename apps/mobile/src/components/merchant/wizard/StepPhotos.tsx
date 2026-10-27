@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Pressable, Alert, Linking, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Pressable, Linking, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import type { AlertButton } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +10,7 @@ import { Text, Button, Card, Badge } from "@/components/ui";
 import { useProductDraft, nextKey } from "@/features/merchant/productDraft";
 import type { DraftPhoto } from "@/features/merchant/productDraft";
 import { rotatePhoto, cropSquare } from "@/features/merchant/upload";
+import { alert, confirm, notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 import { WizardFrame } from "./WizardFrame";
 import { PhotoThumb } from "./StepDetails";
@@ -19,22 +21,30 @@ function toDraft(a: ImagePicker.ImagePickerAsset): DraftPhoto {
   return { key: nextKey("p"), uri: a.uri, width: a.width, height: a.height, remoteUrl: null, upload: "idle" };
 }
 
-/** Paso 74 · Cámara o galería. */
-export function StepSource({ onSaveDraft }: { onSaveDraft: () => void }) {
+/** Paso 74 · Cámara o galería. `onSaveDraft` solo existe al crear (al editar no se ofrece borrador). */
+export function StepSource({ onSaveDraft }: { onSaveDraft?: () => void }) {
   const d = useProductDraft();
   const remaining = MAX_PHOTOS - d.photos.length;
   const [busy, setBusy] = useState<"camera" | "gallery" | null>(null);
 
-  const denied = (which: "cámara" | "galería", other: () => void) => {
-    Alert.alert(
+  const denied = async (which: "cámara" | "galería", other: () => void) => {
+    const otherText = which === "cámara" ? "Usar galería" : "Usar cámara";
+    const otherName = which === "cámara" ? "la galería" : "la cámara";
+    if (Platform.OS === "web") {
+      // En web no hay Ajustes del sistema y el diálogo solo admite dos botones.
+      if (await confirm(`Sin acceso a la ${which}`, `Permite el acceso en tu navegador o usa ${otherName}.`, { okText: otherText })) other();
+      return;
+    }
+    const buttons: AlertButton[] = [
+      { text: "Abrir ajustes", onPress: () => { Linking.openSettings().catch(() => {}); } },
+      { text: otherText, onPress: other },
+    ];
+    if (onSaveDraft) buttons.push({ text: "Guardar borrador", onPress: onSaveDraft });
+    buttons.push({ text: "Cancelar", style: "cancel" });
+    alert(
       `Sin acceso a la ${which}`,
-      `Puedes permitirlo en Ajustes, usar ${which === "cámara" ? "la galería" : "la cámara"} o guardar el producto como borrador.`,
-      [
-        { text: "Abrir ajustes", onPress: () => Linking.openSettings().catch(() => {}) },
-        { text: which === "cámara" ? "Usar galería" : "Usar cámara", onPress: other },
-        { text: "Guardar borrador", onPress: onSaveDraft },
-        { text: "Cancelar", style: "cancel" },
-      ],
+      `Puedes permitirlo en Ajustes${onSaveDraft ? `, usar ${otherName} o guardar el producto como borrador` : ` o usar ${otherName}`}.`,
+      buttons,
     );
   };
 
@@ -51,7 +61,7 @@ export function StepSource({ onSaveDraft }: { onSaveDraft: () => void }) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       d.setStep("adjust");
     } catch (e) {
-      Alert.alert("No se pudo abrir la cámara", errorMessage(e));
+      notify("No se pudo abrir la cámara", errorMessage(e));
     } finally { setBusy(null); }
   };
 
@@ -65,7 +75,7 @@ export function StepSource({ onSaveDraft }: { onSaveDraft: () => void }) {
       d.patch({ candidates: res.assets.map(toDraft) });
       d.setStep("select");
     } catch (e) {
-      Alert.alert("No se pudo abrir la galería", errorMessage(e));
+      notify("No se pudo abrir la galería", errorMessage(e));
     } finally { setBusy(null); }
   };
 
@@ -106,14 +116,11 @@ export function StepSelect() {
 
   const toggle = (key: string) => {
     Haptics.selectionAsync().catch(() => {});
-    setSelected((s) => {
-      if (s.includes(key)) return s.filter((k) => k !== key);
-      if (s.length >= remaining) { Alert.alert("Límite de fotos", `Solo puedes agregar ${remaining} más.`); return s; }
-      return [...s, key];
-    });
+    if (!selected.includes(key) && selected.length >= remaining) { notify("Límite de fotos", `Solo puedes agregar ${remaining} más.`); return; }
+    setSelected((s) => (s.includes(key) ? s.filter((k) => k !== key) : [...s, key]));
   };
 
-  const confirm = () => {
+  const addSelected = () => {
     const chosen = selected.map((k) => d.candidates.find((c) => c.key === k)).filter((c): c is DraftPhoto => !!c);
     const startIdx = d.photos.length;
     d.setPhotos((ps) => [...ps, ...chosen]);
@@ -123,7 +130,7 @@ export function StepSelect() {
 
   return (
     <WizardFrame title="Seleccionar fotos" step="select" onBack={() => { d.patch({ candidates: [] }); d.setStep("source"); }}
-      footer={<Button title={selected.length ? `Agregar ${selected.length} ${selected.length === 1 ? "foto" : "fotos"}` : "Selecciona al menos una"} disabled={!selected.length} onPress={confirm} />}>
+      footer={<Button title={selected.length ? `Agregar ${selected.length} ${selected.length === 1 ? "foto" : "fotos"}` : "Selecciona al menos una"} disabled={!selected.length} onPress={addSelected} />}>
       <Text tone="muted" style={{ marginBottom: 12 }}>Toca para seleccionar. Hasta {remaining} {remaining === 1 ? "foto" : "fotos"} más.</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 }}>
         {d.candidates.map((c) => {
@@ -160,7 +167,7 @@ export function StepAdjust() {
       d.setPhotos((ps) => ps.map((p) => (p.key === photo.key ? { ...p, uri: out.uri, width: out.width, height: out.height, upload: "idle" } : p)));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     } catch (e) {
-      Alert.alert("No se pudo ajustar la foto", errorMessage(e));
+      notify("No se pudo ajustar la foto", errorMessage(e));
     } finally { setBusy(false); }
   };
 
@@ -239,7 +246,7 @@ export function StepOrganize({ progress }: { progress: { done: number; total: nu
             <View style={{ flexDirection: "row" }}>
               <IconBtn icon="chevron-up" onPress={() => move(i, i - 1)} disabled={i === 0} />
               <IconBtn icon="chevron-down" onPress={() => move(i, i + 1)} disabled={i === d.photos.length - 1} />
-              <IconBtn icon="trash-outline" danger onPress={() => Alert.alert("Eliminar foto", "¿Quitar esta foto del producto?", [{ text: "Cancelar", style: "cancel" }, { text: "Eliminar", style: "destructive", onPress: () => d.setPhotos((ps) => ps.filter((x) => x.key !== p.key)) }])} />
+              <IconBtn icon="trash-outline" danger onPress={async () => { if (await confirm("Eliminar foto", "¿Quitar esta foto del producto?", { okText: "Eliminar", destructive: true })) d.setPhotos((ps) => ps.filter((x) => x.key !== p.key)); }} />
             </View>
           </View>
         </Card>

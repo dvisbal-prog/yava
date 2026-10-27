@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Alert, Linking } from "react-native";
+import { View, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,8 +7,9 @@ import { colors, formatRating, MERCHANT_STATUS_LABEL, ORDER_TYPE_LABEL } from "@
 import { Screen, Text, Card, ListRow, Badge, Skeleton } from "@/components/ui";
 import { ErrorState } from "@/components/merchant/Rows";
 import { useMyMerchant, usePlatformSetting } from "@/features/merchant/useMerchant";
-import { parseBankAccount } from "@/features/merchant/types";
+import { parseBankAccount, formatBankAccount } from "@/features/merchant/types";
 import { useAuth } from "@/store/auth";
+import { confirm } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 /** Pantalla 56 · Cuenta del comercio. */
@@ -20,7 +21,9 @@ export default function MerchantAccount() {
   const { data: supportPhone } = usePlatformSetting<string>("support_phone", "+57 300 000 0000");
   const bank = parseBankAccount(m?.bank_account);
 
-  const confirmSignOut = () => Alert.alert("Cerrar sesión", "¿Quieres salir de tu cuenta de comercio?", [{ text: "Cancelar", style: "cancel" }, { text: "Cerrar sesión", style: "destructive", onPress: () => signOut() }]);
+  const confirmSignOut = async () => {
+    if (await confirm("Cerrar sesión", "¿Quieres salir de tu cuenta de comercio?", { okText: "Cerrar sesión", destructive: true })) signOut();
+  };
 
   return (
     <Screen refreshing={q.isFetching && !q.isLoading} onRefresh={() => q.refetch()}>
@@ -46,11 +49,11 @@ export default function MerchantAccount() {
 
       <Text variant="caption" tone="muted" style={{ marginBottom: 4 }}>Mi comercio</Text>
       <ListRow icon="storefront-outline" title="Datos y horarios" subtitle="Nombre, descripción, teléfono y horario de atención" onPress={() => router.push("/(merchant)/hours")} />
-      <ListRow icon="restaurant-outline" title="Mi menú" subtitle="Productos, fotos, precios y disponibilidad" onPress={() => router.push("/(merchant)/menu")} />
+      <ListRow icon="restaurant-outline" title="Mi menú" subtitle="Productos, fotos, precios y disponibilidad" onPress={() => router.navigate("/(merchant)/menu")} />
 
       <Text variant="caption" tone="muted" style={{ marginTop: 20, marginBottom: 4 }}>Dinero</Text>
       <ListRow icon="wallet-outline" title="Liquidaciones" subtitle="Ventas menos comisión por periodo" onPress={() => router.push("/(merchant)/settlements")} />
-      <ListRow icon="card-outline" title="Cuenta bancaria" subtitle={bank ? `${bank.bank} · ${bank.type} ${bank.number}` : "Agrega la cuenta para recibir tus abonos"} onPress={() => router.push("/(merchant)/bank")} />
+      <ListRow icon="card-outline" title="Cuenta bancaria" subtitle={bank ? formatBankAccount(bank) : "Agrega la cuenta para recibir tus abonos"} onPress={() => router.push("/(merchant)/bank")} />
 
       <Text variant="caption" tone="muted" style={{ marginTop: 20, marginBottom: 4 }}>Cuenta</Text>
       <ListRow icon="person-outline" title={profile?.full_name ?? "Administrador"} subtitle={profile?.email ?? profile?.phone ?? ""} chevron={false} />

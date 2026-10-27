@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { Text, Input, Button } from "@/components/ui";
 import { SwitchRow } from "@/components/merchant/Rows";
 import { useProductDraft, isValidTime, validateForPublish } from "@/features/merchant/productDraft";
+import { notify } from "@/lib/dialog";
 import { WizardFrame } from "./WizardFrame";
 
 /** Paso 79 · Disponibilidad y existencias. */
@@ -15,15 +16,15 @@ export function StepAvailability({ onPublish, onSaveDraft, saving, progress }: {
   const missingNonPhoto = v.missing.filter((m) => !m.startsWith("al menos"));
 
   const publish = () => {
-    if (!timesOk) { Alert.alert("Horario inválido", "Usa el formato HH:MM, por ejemplo 11:00."); return; }
-    if (missingNonPhoto.length) { Alert.alert("Falta información", `Para publicar necesitas: ${missingNonPhoto.join(", ")}.`); return; }
-    if (!d.photos.length) { Alert.alert("Agrega una foto", "Para publicar necesitas al menos una foto. Puedes guardar como borrador mientras tanto."); return; }
+    if (!timesOk) { notify("Horario inválido", "Usa el formato HH:MM, por ejemplo 11:00."); return; }
+    if (missingNonPhoto.length) { notify("Falta información", `Para publicar necesitas: ${missingNonPhoto.join(", ")}.`); return; }
+    if (!d.photos.length) { notify("Agrega una foto", "Para publicar necesitas al menos una foto. Puedes guardar como borrador mientras tanto."); return; }
     onPublish();
   };
 
   return (
     <WizardFrame title="Disponibilidad" step="availability" onBack={() => d.setStep(isEdit ? "details" : "options")}
-      footer={isEdit ? <Button title="Listo" onPress={() => { if (!timesOk) { Alert.alert("Horario inválido", "Usa el formato HH:MM."); return; } d.setStep("details"); }} /> : (
+      footer={isEdit ? <Button title="Listo" onPress={() => { if (!timesOk) { notify("Horario inválido", "Usa el formato HH:MM."); return; } d.setStep("details"); }} /> : (
         <View>
           <Button title={d.status === "paused" ? "Guardar pausado" : "Publicar producto"} onPress={publish} loading={saving} />
           <Button title="Guardar borrador" variant="ghost" onPress={onSaveDraft} disabled={saving} style={{ marginTop: 6 }} />

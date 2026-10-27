@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { Screen, Header, Text, Button, Card, Divider, Skeleton } from "@/compone
 import { useCart } from "@/store/cart";
 import { PriceBreakdown, ErrorState } from "@/components/customer";
 import { useOrder, useOrderItems, useMyRating, useMerchant, relativeDateTime, type AddressSnapshot } from "@/features/customer";
+import { confirm } from "@/lib/dialog";
 
 /** Pantalla 23 · Pedido entregado. */
 export default function OrderDelivered() {
@@ -34,8 +35,9 @@ export default function OrderDelivered() {
       });
       router.push("/(customer)/cart" as never);
     };
-    if (cart.lines.length && cart.merchant?.id !== cm.id) Alert.alert("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", [{ text: "Cancelar", style: "cancel" }, { text: "Reemplazar", style: "destructive", onPress: doIt }]);
-    else doIt();
+    if (cart.lines.length && cart.merchant?.id !== cm.id) {
+      void confirm("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", { okText: "Reemplazar", destructive: true }).then((ok) => { if (ok) doIt(); });
+    } else doIt();
   }
 
   if (order.isLoading && !o) return <Screen><Header title="Pedido" /><View style={{ gap: 12, marginTop: 12 }}><Skeleton height={80} /><Skeleton height={160} /><Skeleton height={120} /></View></Screen>;

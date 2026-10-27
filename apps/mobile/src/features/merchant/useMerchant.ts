@@ -8,6 +8,7 @@ import type {
   MerchantHoursRow, MerchantDocumentRow, SettlementRow, SettlementOrderRow, CityRow, MerchantDashboard,
 } from "./types";
 import { EMPTY_DASHBOARD, startOfToday } from "./types";
+import { isUnauthorized } from "@/lib/errors";
 
 /** Comercio del usuario actual (miembro o dueño). */
 export function useMyMerchant() {
@@ -30,7 +31,9 @@ export function useMerchantDashboard(merchantId: string | undefined, from: strin
   return useQuery({
     queryKey: ["dashboard", "merchant", merchantId, from],
     enabled: !!merchantId,
-    refetchInterval: 30_000,
+    // 'No autorizado' (42501) no se arregla reintentando: se muestra un estado propio y se deja de consultar.
+    retry: (count, e) => !isUnauthorized(e) && count < 1,
+    refetchInterval: (query) => (isUnauthorized(query.state.error) ? false : 30_000),
     queryFn: async (): Promise<MerchantDashboard> => {
       const { data, error } = await supabase.rpc("merchant_dashboard", { p_merchant: merchantId, p_from: from });
       if (error) throw error;

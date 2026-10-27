@@ -38,7 +38,7 @@ export default function Restaurants() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12 }}>
           <Chip label={activeCount ? `Filtros · ${activeCount}` : "Ordenar"} icon="options-outline" selected={activeCount > 0} onPress={() => router.push("/modal/filters" as never)} />
           <Chip label="Mejor valorados" selected={filters.sort === "rating"} onPress={() => filters.set({ sort: filters.sort === "rating" ? "recommended" : "rating" })} />
-          <Chip label="Hasta 35 min" selected={filters.maxTime === 30} onPress={() => filters.set({ maxTime: filters.maxTime === 30 ? null : 30 })} />
+          <Chip label="Hasta 35 min" selected={filters.maxTime === 35} onPress={() => filters.set({ maxTime: filters.maxTime === 35 ? null : 35 })} />
           <Chip label="Abierto ahora" selected={filters.openNow} onPress={() => filters.set({ openNow: !filters.openNow })} />
           {tags.map((tag) => <Chip key={tag} label={tag} selected={filters.tag?.toLowerCase() === tag.toLowerCase()} onPress={() => filters.set({ tag: filters.tag?.toLowerCase() === tag.toLowerCase() ? null : tag })} />)}
         </ScrollView>

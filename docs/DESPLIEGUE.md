@@ -33,9 +33,10 @@
 
 ## 2. Vercel (admin web)
 
-- Importar el repo; Root Directory: raíz del monorepo (usa `vercel.json`). Framework Next.js.
-- Variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL` (dominio del panel).
-- Dominio sugerido: `admin.yava.app`. Agregar `https://admin.yava.app/auth/callback` en Supabase Auth → Redirect URLs.
+- Proyecto `yava-admin` (team concierge-hotel) con Root Directory `apps/admin`, framework Next.js; el repo está enlazado en `.vercel/` → `vercel deploy --prod` desde la raíz.
+- Variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL` (`https://yava-panel.vercel.app`).
+- Dominio actual: https://yava-panel.vercel.app. Agregar `https://yava-panel.vercel.app/**` en Supabase Auth → Redirect URLs.
+- Vista web del app móvil: `cd apps/mobile && npx expo export -p web --output-dir dist-web`, copiar `dist-web` fuera del repo con un `vercel.json` de rewrites SPA y desplegar al proyecto `yava-app` → https://yava-app.vercel.app.
 
 ## 3. App móvil (EAS)
 

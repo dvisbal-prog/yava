@@ -1,14 +1,48 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
-    "development": { "developmentClient": true, "distribution": "internal", "env": { "APP_ENV": "development" } },
-    "preview": { "distribution": "internal", "channel": "preview", "env": { "APP_ENV": "preview" }, "android": { "buildType": "apk" } },
-    "production": { "channel": "production", "autoIncrement": true, "env": { "APP_ENV": "production" } }
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "development"
+      },
+      "environment": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "APP_ENV": "preview"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "environment": "preview"
+    },
+    "production": {
+      "channel": "production",
+      "autoIncrement": true,
+      "env": {
+        "APP_ENV": "production"
+      },
+      "environment": "production"
+    }
   },
   "submit": {
     "production": {
-      "ios": { "appleId": "REEMPLAZAR@correo.com", "ascAppId": "REEMPLAZAR", "appleTeamId": "REEMPLAZAR" },
-      "android": { "serviceAccountKeyPath": "./google-play-service-account.json", "track": "internal" }
+      "ios": {
+        "appleId": "REEMPLAZAR@correo.com",
+        "ascAppId": "REEMPLAZAR",
+        "appleTeamId": "REEMPLAZAR"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
+      }
     }
   }
 }

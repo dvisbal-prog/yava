@@ -5,7 +5,7 @@ import { colors, formatCOP, formatDate, formatTime } from "@yava/shared";
 import { Screen, Header, Text, Card, Badge, Skeleton, ListRow } from "@/components/ui";
 import { ErrorState, MoneyRow } from "@/components/merchant/Rows";
 import { useSettlementDetail } from "@/features/merchant/useMerchant";
-import { parseBankAccount, SETTLEMENT_LABEL, SETTLEMENT_TONE } from "@/features/merchant/types";
+import { parseBankAccount, formatBankAccount, SETTLEMENT_LABEL, SETTLEMENT_TONE } from "@/features/merchant/types";
 import { errorMessage } from "@/lib/errors";
 
 /** Pantalla 67 · Detalle de liquidación. */
@@ -40,7 +40,7 @@ export default function SettlementDetail() {
         </Card>
         <Text variant="heading" style={{ marginBottom: 6 }}>Cuenta de abono</Text>
         <Card style={{ marginBottom: 16 }}>
-          <Text variant="bodyStrong">{bank ? `${bank.bank} · ${bank.type} ${bank.number}` : "Sin cuenta registrada al generar la liquidación"}</Text>
+          <Text variant="bodyStrong">{bank ? formatBankAccount(bank) : "Sin cuenta registrada al generar la liquidación"}</Text>
           {bank ? <Text variant="caption" tone="muted">{bank.holder}</Text> : null}
         </Card>
         <Text variant="heading" style={{ marginBottom: 6 }}>Pedidos incluidos ({orders.length})</Text>

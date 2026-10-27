@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Alert, Pressable, Linking } from "react-native";
+import { View, Pressable, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -9,13 +9,14 @@ import { colors, formatRating, COURIER_STATUS_LABEL } from "@yava/shared";
 import { Screen, Text, Card, ListRow, Badge, Skeleton, Input, Button } from "@/components/ui";
 import { ErrorState, StatusDot } from "@/components/merchant/Rows";
 import { useMyCourier, useCourierDocuments, useUpdateCourier } from "@/features/courier/useCourier";
-import { VEHICLE_LABEL, COURIER_DOC_TYPES, DOC_STATUS_LABEL } from "@/features/courier/types";
+import { VEHICLE_LABEL, COURIER_DOC_TYPES, DOC_STATUS_LABEL, maskAccount } from "@/features/courier/types";
 import { usePlatformSetting } from "@/features/merchant/useMerchant";
 import { uploadLocalFile } from "@/features/merchant/upload";
 import { parseBankAccount } from "@/features/merchant/types";
 import { publicUrl } from "@/lib/supabase";
 import { useAuth } from "@/store/auth";
 import { errorMessage } from "@/lib/errors";
+import { notify } from "@/lib/dialog";
 
 /** Pantalla 69 · Perfil del repartidor. */
 export default function CourierProfile() {
@@ -39,7 +40,7 @@ export default function CourierProfile() {
     if (!uid) return;
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert("Sin acceso a la galería", "Permite el acceso en Ajustes para cambiar tu foto."); return; }
+      if (!perm.granted) { notify("Sin acceso a la galería", "Permite el acceso en Ajustes para cambiar tu foto."); return; }
       const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
       if (res.canceled || !res.assets.length) return;
       setUploading(true);
@@ -47,7 +48,7 @@ export default function CourierProfile() {
       await uploadLocalFile("avatars", path, res.assets[0].uri, "image/jpeg");
       await updateProfile({ avatar_url: publicUrl("avatars", path) });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } catch (e) { Alert.alert("No se pudo actualizar la foto", errorMessage(e)); }
+    } catch (e) { notify("No se pudo actualizar la foto", errorMessage(e)); }
     finally { setUploading(false); }
   };
 
@@ -56,11 +57,18 @@ export default function CourierProfile() {
       await updateProfile({ full_name: name.trim(), phone: phone.trim() });
       setEditing(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } catch (e) { Alert.alert("No se pudo guardar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo guardar", errorMessage(e)); }
   };
   const saveVehicle = async () => {
-    try { await updateCourier.mutateAsync({ plate: plate.trim().toUpperCase() || null }); setEditing(null); }
-    catch (e) { Alert.alert("No se pudo guardar", errorMessage(e)); }
+    const p = plate.trim().toUpperCase();
+    // courier_update_settings ignora valores nulos: la placa no se puede borrar desde aquí.
+    if (!p) {
+      if (c && (c.vehicle === "moto" || c.vehicle === "carro")) { notify("Escribe la placa", "Tu vehículo necesita placa."); return; }
+      setEditing(null);
+      return;
+    }
+    try { await updateCourier.mutateAsync({ plate: p }); setEditing(null); }
+    catch (e) { notify("No se pudo guardar", errorMessage(e)); }
   };
 
   const docs = dq.data ?? [];
@@ -98,7 +106,7 @@ export default function CourierProfile() {
               <Button title="Guardar" size="md" onPress={saveData} />
             </Card>
           ) : null}
-          <ListRow icon="bicycle-outline" title="Mi vehículo" subtitle={c ? `${VEHICLE_LABEL[c.vehicle]}${c.plate ? ` · ${c.plate}` : ""}` : ""} onPress={() => setEditing(editing === "vehicle" ? null : "vehicle")} />
+          <ListRow icon="bicycle-outline" title="Mi vehículo" subtitle={c ? `${VEHICLE_LABEL[c.vehicle]}${c.plate ? ` · ${c.plate}` : ""}` : ""} onPress={() => { if (editing !== "vehicle") setPlate(c?.plate ?? ""); setEditing(editing === "vehicle" ? null : "vehicle"); }} />
           {editing === "vehicle" ? (
             <Card style={{ marginVertical: 8 }}>
               <Text variant="caption" tone="muted" style={{ marginBottom: 8 }}>Para cambiar el tipo de vehículo contacta a soporte (requiere nueva verificación).</Text>
@@ -115,7 +123,7 @@ export default function CourierProfile() {
               })}
             </View>
           ) : null}
-          <ListRow icon="wallet-outline" title="Cuenta de retiro" subtitle={bank ? `${bank.bank} · ${bank.number}` : "Agrega tu cuenta"} onPress={() => router.push("/(courier)/withdraw")} />
+          <ListRow icon="wallet-outline" title="Cuenta de retiro" subtitle={bank ? `${bank.bank} · ${maskAccount(bank.number)}` : "Agrega tu cuenta"} onPress={() => router.push("/(courier)/withdraw")} />
           <ListRow icon="notifications-outline" title="Notificaciones y ajustes" subtitle="Pedidos, promociones y novedades" onPress={() => router.push("/(courier)/settings")} />
           <ListRow icon="help-circle-outline" title="Ayuda" subtitle="Centro de ayuda y soporte" onPress={() => Linking.openURL(`tel:${(supportPhone ?? "").replace(/\s/g, "")}`).catch(() => {})} />
         </>

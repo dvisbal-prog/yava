@@ -19,7 +19,7 @@ export function OrderActions({ id, status, hasCourier }: { id: string; status: O
           </>
         }
         title="Liberar repartidor y reasignar"
-        description="El pedido vuelve a quedar disponible para otros repartidores. El actual deja de verlo."
+        description="El pedido vuelve a quedar disponible para otros repartidores y conserva su estado de preparación. El actual deja de verlo. El motivo queda en la línea de tiempo."
         action={reassignCourierAction}
         hidden={{ id }}
         confirmLabel="Liberar y reasignar"
@@ -32,7 +32,7 @@ export function OrderActions({ id, status, hasCourier }: { id: string; status: O
           </>
         }
         title="Forzar estado del pedido"
-        description="Úsalo solo para corregir inconsistencias. Se notifica en la línea de tiempo y queda en auditoría."
+        description="Úsalo solo para corregir inconsistencias. El motivo queda en la línea de tiempo y en auditoría. Elegir Cancelado aplica la cancelación completa."
         action={forceStatusAction}
         hidden={{ id }}
         confirmLabel="Cambiar estado"

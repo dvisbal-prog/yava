@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, FlatList, TextInput, Pressable, Alert } from "react-native";
+import { View, FlatList, TextInput, Pressable } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, formatTime, radius } from "@yava/shared";
@@ -9,6 +9,7 @@ import { useOrderMessages, useSendMessage, useCourierOrder } from "@/features/co
 import { useRealtimeOrder } from "@/hooks/useRealtimeOrder";
 import { useAuth } from "@/store/auth";
 import { errorMessage } from "@/lib/errors";
+import { notify } from "@/lib/dialog";
 
 const QUICK = ["Ya recogí tu pedido, voy en camino.", "Estoy llegando.", "Estoy en la puerta.", "¿Me confirmas la dirección?"];
 
@@ -28,7 +29,7 @@ export default function CourierChat() {
     const t = body.trim();
     if (!t) return;
     setText("");
-    try { await send.mutateAsync(t); } catch (e) { Alert.alert("No se pudo enviar", errorMessage(e)); setText(t); }
+    try { await send.mutateAsync(t); } catch (e) { notify("No se pudo enviar", errorMessage(e)); setText(t); }
   };
 
   return (

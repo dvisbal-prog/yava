@@ -2,15 +2,20 @@
 export type ActionResult = { ok: true; message?: string; data?: Record<string, string> } | { ok: false; error: string };
 
 export function fail(error: unknown, fallback = "No se pudo completar la acción."): ActionResult {
-  if (typeof error === "string") return { ok: false, error };
+  return { ok: false, error: errorText(error, fallback) };
+}
+
+/** Mensaje legible (es-CO) para un error de Supabase/PostgREST o de JS. */
+export function errorText(error: unknown, fallback = "No se pudo completar la acción."): string {
+  if (typeof error === "string") return humanize(error);
   if (error && typeof error === "object" && "message" in error && typeof (error as { message: unknown }).message === "string") {
-    return { ok: false, error: humanize((error as { message: string }).message) };
+    return humanize((error as { message: string }).message);
   }
-  return { ok: false, error: fallback };
+  return fallback;
 }
 
 function humanize(msg: string): string {
-  if (/permission denied|Sin permiso|42501/i.test(msg)) return "No tienes permiso para esta acción.";
+  if (/permission denied|Sin permiso|No autorizado|42501/i.test(msg)) return "No tienes permiso para esta acción.";
   if (/JWT|expired/i.test(msg)) return "Tu sesión expiró. Vuelve a iniciar sesión.";
   return msg;
 }

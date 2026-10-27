@@ -12,7 +12,7 @@ export function formatRating(v: number | null | undefined): string {
 export function formatTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true });
+  return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Bogota" });
 }
 
 export function formatDate(iso: string | null | undefined): string {

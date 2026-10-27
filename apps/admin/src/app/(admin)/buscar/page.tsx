@@ -109,9 +109,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           />
         </Card>
       ) : null}
-      <p className="text-xs text-muted">
-        ¿No encuentras lo que buscas? Usa los filtros de <Link href="/pedidos" className="text-blue hover:underline">Pedidos</Link> o <Link href="/comercios" className="text-blue hover:underline">Comercios</Link>.
-      </p>
+      {canAccess(ctx.role, "pedidos") || canAccess(ctx.role, "comercios") ? (
+        <p className="text-xs text-muted">
+          ¿No encuentras lo que buscas? Usa los filtros de{" "}
+          {canAccess(ctx.role, "pedidos") ? <Link href="/pedidos" className="text-blue hover:underline">Pedidos</Link> : null}
+          {canAccess(ctx.role, "pedidos") && canAccess(ctx.role, "comercios") ? " o " : null}
+          {canAccess(ctx.role, "comercios") ? <Link href="/comercios" className="text-blue hover:underline">Comercios</Link> : null}.
+        </p>
+      ) : null}
     </div>
   );
 }

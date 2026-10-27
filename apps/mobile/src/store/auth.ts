@@ -72,9 +72,10 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   updateProfile: async (patch) => {
     const uid = get().session?.user.id;
-    if (!uid) return;
-    const { data } = await supabase.from("profiles").update(patch).eq("id", uid).select().single();
-    if (data) set({ profile: data as Profile });
+    if (!uid) throw new Error("Sin sesión");
+    const { data, error } = await supabase.from("profiles").update(patch).eq("id", uid).select().single();
+    if (error) throw error;
+    set({ profile: data as Profile });
   },
 }));
 

@@ -21,8 +21,8 @@ port = 54323
 
 [auth]
 enabled = true
-site_url = "yava://"
-additional_redirect_urls = ["yava://auth/callback", "http://localhost:3000/auth/callback", "exp://localhost:8081"]
+site_url = "https://yava-panel.vercel.app"
+additional_redirect_urls = ["yava://auth/callback", "yava://**", "https://yava-panel.vercel.app/**", "https://yava-app.vercel.app/**", "http://localhost:3000/auth/callback", "exp://localhost:8081"]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 enable_signup = true

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Screen, Header, Text, Button, Input } from "@/components/ui";
@@ -23,28 +23,24 @@ export default function CancelOrder() {
   const o = order.data;
   const canCancel = o?.status && ["pending_payment", "placed", "accepted"].includes(o.status);
 
-  function confirm() {
+  // Esta pantalla ya es la confirmación: "Confirmar cancelación" llama cancel_order directamente.
+  async function cancelOrder() {
     const text = reason === "Otro motivo" ? other.trim() : reason;
     if (!text) { setError("Elige un motivo."); return; }
-    Alert.alert("Cancelar pedido", "Esta acción no se puede deshacer.", [
-      { text: "Volver", style: "cancel" },
-      { text: "Sí, cancelar", style: "destructive", onPress: async () => {
-        setBusy(true); setError(null);
-        try {
-          const { error: e } = await supabase.rpc("cancel_order", { p_order_id: id, p_reason: text });
-          if (e) throw e;
-          void qc.invalidateQueries({ queryKey: ["order", id] });
-          void qc.invalidateQueries({ queryKey: ["orders"] });
-          router.dismissTo("/(customer)/orders" as never);
-        } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
-      } },
-    ]);
+    setBusy(true); setError(null);
+    try {
+      const { error: e } = await supabase.rpc("cancel_order", { p_order_id: id, p_reason: text });
+      if (e) throw e;
+      void qc.invalidateQueries({ queryKey: ["order", id] });
+      void qc.invalidateQueries({ queryKey: ["orders"] });
+      router.dismissTo("/(customer)/orders" as never);
+    } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
   }
 
   return (
     <Screen footer={
       <View style={{ gap: 8 }}>
-        <Button title="Cancelar pedido" variant="danger" onPress={confirm} loading={busy} disabled={!canCancel} />
+        <Button title="Confirmar cancelación" variant="danger" onPress={cancelOrder} loading={busy} disabled={!canCancel} />
         <Button title="Mantener mi pedido" variant="ghost" onPress={() => router.back()} />
       </View>
     }>

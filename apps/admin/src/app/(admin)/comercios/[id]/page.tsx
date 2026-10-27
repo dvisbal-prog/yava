@@ -6,8 +6,9 @@ import { formatCOP, type MerchantCategory } from "@yava/shared";
 import { requireSection } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { signDocuments, docLabel } from "@/lib/storage";
-import { bogotaDayStart, daysAgoISO, fmtDate, fmtDateTime, fmtPercent, formatRating } from "@/lib/format";
-import { canEditCommission, canManageMerchants } from "@/lib/roles";
+import { bogotaDayStart, daysAgoISO, fmtDate, fmtDateTime, fmtPercent, formatRating, maskAccount } from "@/lib/format";
+import { MERCHANT_REQUIRED_DOCS, docsBlocker, docsReadiness } from "@/lib/documents";
+import { canAccess, canEditCommission, canManageFinance, canManageMerchants } from "@/lib/roles";
 import { Card, CardBody, CardHeader, Note } from "@/components/ui/card";
 import { KPI, StatInline } from "@/components/ui/kpi";
 import { Badge, DocStatusBadge, MerchantStatusBadge, OrderStatusBadge, SettlementStatusBadge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Tabs } from "@/components/ui/tabs";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MaskedAccount } from "@/components/ui/masked-account";
 import { CommissionDialog, DocumentReview, MerchantStatusActions, ProductToggle } from "./merchant-actions";
 
 export const metadata: Metadata = { title: "Ficha del comercio" };
@@ -35,10 +37,13 @@ export default async function MerchantDetailPage({ params, searchParams }: { par
   const { data: m } = await supabase.from("merchants").select("*, city:cities(name)").eq("id", id).maybeSingle();
   if (!m) notFound();
 
-  const tabs: Tab[] = ["resumen", "documentos", "catalogo", "horarios", "liquidaciones", "pedidos"];
+  // Liquidaciones solo para roles con Finanzas (operaciones no las ve: la RLS las oculta y su detalle da 404).
+  const showSettlements = canAccess(ctx.role, "finanzas");
+  const tabs: Tab[] = ["resumen", "documentos", "catalogo", "horarios", ...(showSettlements ? (["liquidaciones"] as const) : []), "pedidos"];
   const tab: Tab = tabs.includes(sp.tab as Tab) ? (sp.tab as Tab) : m.status === "pending" || m.status === "under_review" ? "documentos" : "resumen";
   const canManage = canManageMerchants(ctx.role);
   const canCommission = canEditCommission(ctx.role);
+  const canOpenOrders = canAccess(ctx.role, "pedidos");
 
   const [{ data: docs }, { data: orders30 }, { data: owner }, { count: docsPending }] = await Promise.all([
     supabase.from("merchant_documents").select("id,doc_type,file_path,status,notes,reviewed_at,created_at").eq("merchant_id", id).order("created_at"),
@@ -52,6 +57,9 @@ export default async function MerchantDetailPage({ params, searchParams }: { par
   const sales = delivered.reduce((a, o) => a + o.items_subtotal, 0);
   const commissions = delivered.reduce((a, o) => a + o.commission_amount, 0);
   const payouts = delivered.reduce((a, o) => a + o.merchant_payout, 0);
+
+  const reviewing = m.status === "pending" || m.status === "under_review" || m.status === "rejected";
+  const approveBlocker = reviewing ? docsBlocker(docsReadiness(MERCHANT_REQUIRED_DOCS, docs ?? [])) : null;
 
   const bank = (m.bank_account && typeof m.bank_account === "object" && !Array.isArray(m.bank_account) ? m.bank_account : {}) as Record<string, string | undefined>;
 
@@ -79,9 +87,10 @@ export default async function MerchantDetailPage({ params, searchParams }: { par
             </p>
           </div>
         </div>
-        {canManage ? <MerchantStatusActions id={m.id} status={m.status} /> : null}
+        {canManage ? <MerchantStatusActions id={m.id} status={m.status} approveBlocker={approveBlocker} /> : null}
       </div>
 
+      {canManage && approveBlocker ? <Note tone="warning">{approveBlocker}</Note> : null}
       {m.review_notes ? <Note tone={m.status === "rejected" || m.status === "suspended" ? "danger" : "neutral"}>Última nota de revisión: {m.review_notes}</Note> : null}
 
       <Tabs
@@ -91,7 +100,7 @@ export default async function MerchantDetailPage({ params, searchParams }: { par
           { key: "documentos", label: "Documentos", count: docsPending ?? 0, href: `/comercios/${id}?tab=documentos` },
           { key: "catalogo", label: "Catálogo", href: `/comercios/${id}?tab=catalogo` },
           { key: "horarios", label: "Horarios", href: `/comercios/${id}?tab=horarios` },
-          { key: "liquidaciones", label: "Liquidaciones", href: `/comercios/${id}?tab=liquidaciones` },
+          ...(showSettlements ? [{ key: "liquidaciones", label: "Liquidaciones", href: `/comercios/${id}?tab=liquidaciones` }] : []),
           { key: "pedidos", label: "Pedidos", href: `/comercios/${id}?tab=pedidos` },
         ]}
       />
@@ -138,7 +147,7 @@ export default async function MerchantDetailPage({ params, searchParams }: { par
                     <>
                       <StatInline label="Banco" value={bank.bank ?? "—"} />
                       <StatInline label="Tipo" value={bank.type ?? "—"} />
-                      <StatInline label="Número" value={<span className="font-mono">{bank.number ?? "—"}</span>} />
+                      <StatInline label="Número" value={<MaskedAccount masked={maskAccount(bank.number)} full={canManageFinance(ctx.role) ? bank.number : null} />} />
                       <StatInline label="Titular" value={bank.holder ?? "—"} />
                     </>
                   )}
@@ -169,8 +178,8 @@ export default async function MerchantDetailPage({ params, searchParams }: { par
       {tab === "documentos" ? <DocumentsTab merchantId={id} docs={docs ?? []} canManage={canManage} /> : null}
       {tab === "catalogo" ? <CatalogTab merchantId={id} canManage={canManage} /> : null}
       {tab === "horarios" ? <HoursTab merchantId={id} /> : null}
-      {tab === "liquidaciones" ? <SettlementsTab merchantId={id} /> : null}
-      {tab === "pedidos" ? <OrdersTab merchantId={id} /> : null}
+      {tab === "liquidaciones" && showSettlements ? <SettlementsTab merchantId={id} /> : null}
+      {tab === "pedidos" ? <OrdersTab merchantId={id} linkOrders={canOpenOrders} /> : null}
     </div>
   );
 }
@@ -307,7 +316,7 @@ async function SettlementsTab({ merchantId }: { merchantId: string }) {
   );
 }
 
-async function OrdersTab({ merchantId }: { merchantId: string }) {
+async function OrdersTab({ merchantId, linkOrders }: { merchantId: string; linkOrders: boolean }) {
   const supabase = await createClient();
   const { data } = await supabase.from("order_summary").select("id,number,status,total,placed_at,customer_name,courier_name").eq("merchant_id", merchantId).order("placed_at", { ascending: false }).limit(50);
   return (
@@ -316,7 +325,7 @@ async function OrdersTab({ merchantId }: { merchantId: string }) {
       <DataTable
         rows={data ?? []}
         rowKey={(o) => o.id ?? ""}
-        rowHref={(o) => `/pedidos/${o.id}`}
+        rowHref={linkOrders ? (o) => `/pedidos/${o.id}` : undefined}
         emptyTitle="Sin pedidos"
         columns={[
           { key: "n", header: "Pedido", cell: (o) => <span className="font-medium">#{o.number}</span> },

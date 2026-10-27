@@ -27,12 +27,25 @@ export function applyMerchantFilters(list: NearbyMerchant[], f: MerchantFilters)
   return out;
 }
 
-/** Etiqueta del siguiente horario de apertura: "Abre hoy a las 12:00" / "Abre mañana a las 8:00". */
+/** Colombia está en UTC−5 todo el año (sin horario de verano). */
+const BOGOTA_OFFSET_MS = -5 * 60 * 60 * 1000;
+
+/** Fecha "corrida" a la hora de Bogotá: leer siempre con getUTC*() (no depende de la zona del dispositivo o navegador). */
+function bogota(d: Date): Date {
+  return new Date(d.getTime() + BOGOTA_OFFSET_MS);
+}
+
+/** "08:05", "21:40" (24 h, hora de Bogotá). */
+function hhmm(b: Date): string {
+  return `${String(b.getUTCHours()).padStart(2, "0")}:${String(b.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+/** Etiqueta del siguiente horario de apertura: "Abre hoy a las 12:00" / "Abre mañana a las 08:00" (hora de Bogotá). */
 export function nextOpeningLabel(hours: MerchantHourRow[]): string | null {
   if (!hours.length) return null;
-  const now = new Date();
-  const today = now.getDay();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const now = bogota(new Date());
+  const today = now.getUTCDay();
+  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
   for (let i = 0; i < 7; i++) {
     const wd = (today + i) % 7;
     const slots = hours.filter((h) => h.weekday === wd).sort((a, b) => a.opens.localeCompare(b.opens));
@@ -40,7 +53,7 @@ export function nextOpeningLabel(hours: MerchantHourRow[]): string | null {
       const [hh, mm] = s.opens.split(":").map(Number);
       const opensMin = hh * 60 + mm;
       if (i === 0 && opensMin <= nowMin) continue;
-      const time = `${hh}:${String(mm).padStart(2, "0")}`;
+      const time = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
       if (i === 0) return `Abre hoy a las ${time}`;
       if (i === 1) return `Abre mañana a las ${time}`;
       const names = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -89,15 +102,18 @@ export function maskPhone(raw: string): string {
   return d.replace(/(\d{3})(\d{0,3})(\d{0,4})/, (_, a: string, b: string, c: string) => [a, b, c].filter(Boolean).join(" "));
 }
 
-/** "Hoy · 12:40", "Ayer · 19:15", "18 oct · 21:08" */
+const MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"];
+const dayKey = (b: Date) => `${b.getUTCFullYear()}-${b.getUTCMonth()}-${b.getUTCDate()}`;
+
+/** "Hoy · 12:40", "Ayer · 19:15", "18 oct · 21:08" (24 h, hora de Bogotá). */
 export function relativeDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  const now = new Date();
-  const time = d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true });
-  const sameDay = d.toDateString() === now.toDateString();
-  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-  if (sameDay) return `Hoy · ${time}`;
-  if (d.toDateString() === yesterday.toDateString()) return `Ayer · ${time}`;
-  return `${d.toLocaleDateString("es-CO", { day: "numeric", month: "short" })} · ${time}`;
+  const d = bogota(new Date(iso));
+  if (Number.isNaN(d.getTime())) return "";
+  const now = bogota(new Date());
+  const time = hhmm(d);
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  if (dayKey(d) === dayKey(now)) return `Hoy · ${time}`;
+  if (dayKey(d) === dayKey(yesterday)) return `Ayer · ${time}`;
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} · ${time}`;
 }

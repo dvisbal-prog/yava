@@ -6,20 +6,25 @@ import { ReasonDialog } from "@/components/ui/reason-dialog";
 import { Field, Input } from "@/components/ui/field";
 import { reviewCourierDocumentAction, setCourierStatusAction, withdrawalTransitionAction } from "../actions";
 
-export function CourierStatusActions({ id, status }: { id: string; status: CourierStatus }) {
+/** `approveBlocker`: motivo por el que aún no se puede aprobar (documentos sin aprobar); deshabilita "Aprobar". */
+export function CourierStatusActions({ id, status, approveBlocker = null }: { id: string; status: CourierStatus; approveBlocker?: string | null }) {
   const reviewing = status === "pending" || status === "under_review";
+  const blocked = reviewing && !!approveBlocker;
   return (
     <div className="flex flex-wrap gap-2">
       {status !== "active" ? (
-        <ReasonDialog
-          variant="primary"
-          trigger={<><Check className="h-4 w-4" aria-hidden /> {reviewing ? "Aprobar" : "Reactivar"}</>}
-          title={reviewing ? "Aprobar repartidor" : "Reactivar repartidor"}
-          description="Podrá conectarse y tomar pedidos. Verifica primero que sus documentos estén aprobados."
-          action={setCourierStatusAction}
-          hidden={{ id, status: "active" }}
-          confirmLabel={reviewing ? "Aprobar" : "Reactivar"}
-        />
+        <span title={blocked ? (approveBlocker ?? undefined) : undefined} className="inline-flex">
+          <ReasonDialog
+            variant="primary"
+            trigger={<><Check className="h-4 w-4" aria-hidden /> {reviewing ? "Aprobar" : "Reactivar"}</>}
+            title={reviewing ? "Aprobar repartidor" : "Reactivar repartidor"}
+            description="Podrá conectarse y tomar pedidos."
+            action={setCourierStatusAction}
+            hidden={{ id, status: "active" }}
+            confirmLabel={reviewing ? "Aprobar" : "Reactivar"}
+            disabled={blocked}
+          />
+        </span>
       ) : null}
       {reviewing ? (
         <ReasonDialog

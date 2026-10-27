@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink, FileText, Mail, Phone } from "lucide-react";
-import { formatCOP } from "@yava/shared";
+import { ACTIVE_ORDER_STATUSES, formatCOP } from "@yava/shared";
 import { requireSection } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { signDocuments, docLabel } from "@/lib/storage";
-import { fmtDate, fmtDateTime, fmtRelativeDay, formatRating } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtRelativeDay, formatRating, maskAccount } from "@/lib/format";
+import { courierRequiredDocs, docsBlocker, docsReadiness } from "@/lib/documents";
 import { canManageFinance, canManageMerchants } from "@/lib/roles";
 import { Card, CardBody, CardHeader, Note } from "@/components/ui/card";
 import { KPI, StatInline } from "@/components/ui/kpi";
@@ -14,6 +15,7 @@ import { Badge, CourierStatusBadge, DocStatusBadge, OrderStatusBadge, Settlement
 import { DataTable } from "@/components/ui/data-table";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MaskedAccount } from "@/components/ui/masked-account";
 import { CourierDocumentReview, CourierStatusActions, WithdrawalActions } from "./courier-actions";
 
 export const metadata: Metadata = { title: "Repartidor" };
@@ -33,11 +35,15 @@ export default async function CourierDetailPage({ params }: { params: Promise<{ 
     supabase.from("courier_documents").select("id,doc_type,file_path,status,notes,reviewed_at,created_at").eq("courier_id", id).order("created_at"),
     supabase.from("order_summary").select("id,number,status,merchant_name,courier_payout,delivered_at,placed_at,city_name").eq("courier_id", id).order("placed_at", { ascending: false }).limit(30),
     canFinance ? supabase.from("courier_withdrawals").select("id,amount,status,reference,created_at,processed_at,bank_snapshot").eq("courier_id", id).order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: null }),
-    supabase.from("orders").select("id,number,status").eq("courier_id", id).in("status", ["assigned", "picked_up", "on_the_way"]).limit(1),
+    // Entrega en curso = cualquier pedido asignado que no esté pendiente de pago, entregado ni cancelado (igual que courier_dashboard).
+    supabase.from("orders").select("id,number,status").eq("courier_id", id).in("status", ACTIVE_ORDER_STATUSES).order("assigned_at", { ascending: false }).limit(1),
   ]);
   const urls = await signDocuments(supabase, (docs ?? []).map((d) => d.file_path));
   const bank = (c.bank_account && typeof c.bank_account === "object" && !Array.isArray(c.bank_account) ? c.bank_account : {}) as Record<string, string | undefined>;
   const activeOrder = active?.[0];
+  const reviewing = c.status === "pending" || c.status === "under_review";
+  const requiredDocs = courierRequiredDocs(c.vehicle);
+  const approveBlocker = reviewing ? docsBlocker(docsReadiness(requiredDocs, docs ?? [])) : null;
 
   return (
     <div className="space-y-5">
@@ -62,9 +68,10 @@ export default async function CourierDetailPage({ params }: { params: Promise<{ 
             </p>
           </div>
         </div>
-        {canManage ? <CourierStatusActions id={c.user_id} status={c.status} /> : null}
+        {canManage ? <CourierStatusActions id={c.user_id} status={c.status} approveBlocker={approveBlocker} /> : null}
       </div>
 
+      {canManage && approveBlocker ? <Note tone="warning">{approveBlocker}</Note> : null}
       {c.review_notes ? <Note tone={c.status === "suspended" ? "danger" : "neutral"}>Última nota de revisión: {c.review_notes}</Note> : null}
 
       <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
@@ -80,7 +87,7 @@ export default async function CourierDetailPage({ params }: { params: Promise<{ 
       <div className="grid gap-5 grid-cols-1 xl:grid-cols-3">
         <div className="xl:col-span-2 space-y-5">
           <Card>
-            <CardHeader title="Documentos" description="Archivos privados; los enlaces caducan en una hora." />
+            <CardHeader title="Documentos" description={`Obligatorios: ${requiredDocs.map(docLabel).join(", ")}. Archivos privados; los enlaces caducan en una hora.`} />
             {(docs ?? []).length === 0 ? (
               <EmptyState icon={FileText} title="Sin documentos cargados" />
             ) : (
@@ -172,7 +179,7 @@ export default async function CourierDetailPage({ params }: { params: Promise<{ 
                 <>
                   <StatInline label="Banco" value={bank.bank ?? "—"} />
                   <StatInline label="Tipo" value={bank.type ?? "—"} />
-                  <StatInline label="Número" value={<span className="font-mono">{bank.number ?? "—"}</span>} />
+                  <StatInline label="Número" value={<MaskedAccount masked={maskAccount(bank.number)} full={canFinance ? bank.number : null} />} />
                   <StatInline label="Titular" value={bank.holder ?? "—"} />
                 </>
               )}

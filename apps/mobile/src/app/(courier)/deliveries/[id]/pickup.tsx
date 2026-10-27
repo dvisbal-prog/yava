@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Alert, Linking, Pressable } from "react-native";
+import { View, Linking, Pressable } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -17,6 +17,7 @@ import { useRealtimeOrder } from "@/hooks/useRealtimeOrder";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
 import { openInMaps } from "@/features/courier/maps";
+import { notify } from "@/lib/dialog";
 
 /** Pantalla 62 · Recogida en el comercio. */
 export default function CourierPickup() {
@@ -62,11 +63,11 @@ export default function CourierPickup() {
 
   const confirmPickup = async () => {
     if (!order.id) return;
-    if (!allChecked) { Alert.alert("Verifica los productos", "Marca todos los productos antes de confirmar la recogida."); return; }
+    if (!allChecked) { notify("Verifica los productos", "Marca todos los productos antes de confirmar la recogida."); return; }
     try {
       await setStatus.mutateAsync({ orderId: order.id, status: "picked_up" });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } catch (e) { Alert.alert("No se pudo confirmar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo confirmar", errorMessage(e)); }
   };
   const startRoute = async () => {
     if (!order.id) return;
@@ -74,7 +75,7 @@ export default function CourierPickup() {
       await setStatus.mutateAsync({ orderId: order.id, status: "on_the_way" });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       router.replace(`/(courier)/deliveries/${order.id}/deliver`);
-    } catch (e) { Alert.alert("No se pudo iniciar la ruta", errorMessage(e)); }
+    } catch (e) { notify("No se pudo iniciar la ruta", errorMessage(e)); }
   };
 
   return (
@@ -100,7 +101,7 @@ export default function CourierPickup() {
           </View>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
             {pickupPhone ? <Button title="Llamar" variant="outline" size="md" icon="call-outline" onPress={() => Linking.openURL(`tel:${pickupPhone}`).catch(() => {})} style={{ flex: 1 }} /> : null}
-            <Button title="Abrir en Maps" variant="secondary" size="md" icon="map-outline" onPress={() => pickupLat != null && pickupLng != null ? openInMaps(pickupLat, pickupLng, pickupName) : Alert.alert("Sin coordenadas", pickupAddress || "El comercio no tiene ubicación registrada.")} style={{ flex: 1 }} />
+            <Button title="Abrir en Maps" variant="secondary" size="md" icon="map-outline" onPress={() => pickupLat != null && pickupLng != null ? openInMaps(pickupLat, pickupLng, pickupName) : notify("Sin coordenadas", pickupAddress || "El comercio no tiene ubicación registrada.")} style={{ flex: 1 }} />
           </View>
         </Card>
 

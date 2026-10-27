@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Alert, Pressable, ScrollView } from "react-native";
+import { View, Pressable, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
@@ -14,6 +14,7 @@ import { getCurrentCoords } from "@/features/courier/useCourier";
 import type { MerchantRow } from "@/features/merchant/types";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/store/auth";
+import { notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 type Category = "food" | "market" | "pharmacy";
@@ -55,24 +56,24 @@ export default function MerchantRegister() {
     setLocating(true);
     const c = await getCurrentCoords();
     setLocating(false);
-    if (!c) { Alert.alert("Sin ubicación", "No pudimos obtener tu ubicación. Puedes continuar solo con la dirección."); return; }
+    if (!c) { notify("Sin ubicación", "No pudimos obtener tu ubicación. Puedes continuar solo con la dirección."); return; }
     setCoords(c);
   };
 
   const pickDoc = async (type: string) => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert("Sin acceso a la galería", "Permite el acceso en Ajustes para subir documentos."); return; }
+      if (!perm.granted) { notify("Sin acceso a la galería", "Permite el acceso en Ajustes para subir documentos."); return; }
       const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9 });
       if (res.canceled || !res.assets.length) return;
       const a = res.assets[0];
       setDocs((d) => ({ ...d, [type]: { uri: a.uri, name: a.fileName ?? `${type}.jpg` } }));
-    } catch (e) { Alert.alert("No se pudo seleccionar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo seleccionar", errorMessage(e)); }
   };
 
   const submit = async () => {
     setTouched(true);
-    if (!valid) { Alert.alert("Completa los datos", "Revisa los campos marcados y acepta los términos."); return; }
+    if (!valid) { notify("Completa los datos", "Revisa los campos marcados y acepta los términos."); return; }
     setSubmitting(true);
     try {
       const { data, error } = await supabase.rpc("register_merchant", {
@@ -94,10 +95,10 @@ export default function MerchantRegister() {
       }
       await refreshProfile();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      if (failed.length) Alert.alert("Comercio creado", `No se pudieron subir: ${failed.join(", ")}. Podrás reintentarlo desde la pantalla de revisión.`);
+      if (failed.length) notify("Comercio creado", `No se pudieron subir: ${failed.join(", ")}. Podrás reintentarlo desde la pantalla de revisión.`);
       router.replace("/(onboarding)/merchant-review");
     } catch (e) {
-      Alert.alert("No se pudo registrar", errorMessage(e));
+      notify("No se pudo registrar", errorMessage(e));
     } finally { setSubmitting(false); }
   };
 

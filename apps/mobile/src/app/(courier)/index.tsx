@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Switch, Alert } from "react-native";
+import { View, Switch } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +14,7 @@ import type { Coords } from "@/features/courier/useCourier";
 import { parseAddress, addressLine } from "@/features/merchant/types";
 import { useAuth } from "@/store/auth";
 import { errorMessage } from "@/lib/errors";
+import { notify } from "@/lib/dialog";
 
 /** Pantalla 60 · Inicio del repartidor. */
 export default function CourierHome() {
@@ -30,14 +31,14 @@ export default function CourierHome() {
   const availableQ = useAvailableOrders(coords?.lat ?? null, coords?.lng ?? null, online);
 
   const onDenied = useCallback(() => {
-    Alert.alert("Necesitamos tu ubicación", "Para recibir entregas cercanas activa el permiso de ubicación. Te pondremos como no disponible.", [{ text: "Entendido" }]);
+    notify("Necesitamos tu ubicación", "Para recibir entregas cercanas activa el permiso de ubicación. Te pondremos como no disponible.");
     setOnline.mutate(false);
   }, [setOnline]);
   useLocationTracking(online, activeId, setCoords, onDenied);
 
   const toggle = async (v: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    try { await setOnline.mutateAsync(v); } catch (e) { Alert.alert("No se pudo cambiar", errorMessage(e)); }
+    try { await setOnline.mutateAsync(v); } catch (e) { notify("No se pudo cambiar", errorMessage(e)); }
   };
 
   const active = activeQ.data;

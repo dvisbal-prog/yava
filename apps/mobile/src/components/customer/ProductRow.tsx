@@ -15,25 +15,27 @@ export function isProductAvailable(p: Pick<ProductRowData, "status" | "track_sto
 /**
  * Fila de producto. `qty`/`onQty` activan el stepper inline (Mercado/Farmacia);
  * si no, se muestra el botón "+" y toda la fila navega al detalle.
+ * `disabled` = el comercio está cerrado (43): "+" gris sin badge. "Agotado"/"Pausado" solo depende del producto.
  */
 export function ProductRow({ p, onPress, onAdd, qty, onQty, disabled }: {
   p: ProductRowData; onPress: () => void; onAdd?: () => void; qty?: number; onQty?: (q: number) => void; disabled?: boolean;
 }) {
-  const available = isProductAvailable(p) && !disabled;
+  const soldOut = !isProductAvailable(p);
+  const canAdd = !soldOut && !disabled;
   const inline = typeof qty === "number" && onQty;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, { opacity: pressed ? 0.9 : 1 }]}>
       <View style={{ flex: 1, paddingRight: 12 }}>
-        <Text variant="bodyStrong" numberOfLines={2} style={!available && { color: colors.gray400 }}>{p.name}</Text>
+        <Text variant="bodyStrong" numberOfLines={2} style={soldOut && { color: colors.gray400 }}>{p.name}</Text>
         {p.description ? <Text variant="caption" tone="muted" numberOfLines={2} style={{ marginTop: 2 }}>{p.description}</Text> : null}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
-          <Text variant="bodyStrong" tone={available ? "default" : "muted"}>{formatCOP(p.price)}</Text>
-          {!available ? <Badge label={p.status === "paused" ? "Pausado" : "Agotado"} tone="gray" /> : null}
+          <Text variant="bodyStrong" tone={canAdd ? "default" : "muted"}>{formatCOP(p.price)}</Text>
+          {soldOut ? <Badge label={p.status === "paused" ? "Pausado" : "Agotado"} tone="gray" /> : null}
         </View>
       </View>
       <View>
-        <Image source={{ uri: p.image_urls[0] }} style={[styles.img, !available && { opacity: 0.5 }]} contentFit="cover" transition={150} />
-        {available ? (
+        <Image source={{ uri: p.image_urls[0] }} style={[styles.img, soldOut && { opacity: 0.5 }]} contentFit="cover" transition={150} />
+        {canAdd ? (
           inline && qty > 0 ? (
             <View style={styles.stepperWrap}><Stepper value={qty} onChange={onQty} size="sm" /></View>
           ) : (
@@ -41,6 +43,10 @@ export function ProductRow({ p, onPress, onAdd, qty, onQty, disabled }: {
               <Ionicons name="add" size={18} color={colors.white} />
             </Pressable>
           )
+        ) : !soldOut ? (
+          <View style={[styles.addBtn, styles.addBtnOff]} accessibilityLabel="Comercio cerrado">
+            <Ionicons name="add" size={18} color={colors.white} />
+          </View>
         ) : null}
       </View>
     </Pressable>
@@ -71,6 +77,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.gray100 },
   img: { width: 88, height: 88, borderRadius: radius.md, backgroundColor: colors.gray100 },
   addBtn: { position: "absolute", bottom: -6, right: -6, width: 30, height: 30, borderRadius: 15, backgroundColor: colors.blue, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.white },
+  addBtnOff: { backgroundColor: colors.gray300 },
   stepperWrap: { position: "absolute", bottom: -8, right: -4, backgroundColor: colors.white, borderRadius: 999 },
   tile: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.gray200, overflow: "hidden", marginRight: 12 },
   tileImg: { backgroundColor: colors.gray100 },

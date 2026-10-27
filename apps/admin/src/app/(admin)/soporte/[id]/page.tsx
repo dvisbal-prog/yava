@@ -6,7 +6,7 @@ import { formatCOP } from "@yava/shared";
 import { requireSection } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fmtAgo, fmtDateTime, fmtTime } from "@/lib/format";
-import { canManageSupport } from "@/lib/roles";
+import { canAccess, canManageSupport } from "@/lib/roles";
 import { Card, CardBody, CardHeader, Note } from "@/components/ui/card";
 import { StatInline } from "@/components/ui/kpi";
 import { Badge, OrderStatusBadge, PriorityBadge, SupportStatusBadge } from "@/components/ui/badge";
@@ -106,11 +106,11 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         <div className="space-y-5">
           {order ? (
             <Card>
-              <CardHeader title="Pedido relacionado" action={<Link href={`/pedidos/${order.id}`} className="text-[13px] text-blue hover:underline inline-flex items-center">Ver pedido <ChevronRight className="h-3.5 w-3.5" /></Link>} />
+              <CardHeader title="Pedido relacionado" action={canAccess(ctx.role, "pedidos") ? <Link href={`/pedidos/${order.id}`} className="text-[13px] text-blue hover:underline inline-flex items-center">Ver pedido <ChevronRight className="h-3.5 w-3.5" /></Link> : null} />
               <CardBody>
                 <StatInline label="Pedido" value={<span className="font-semibold">#{order.number}</span>} />
                 <StatInline label="Estado" value={<OrderStatusBadge status={order.status} />} />
-                <StatInline label="Comercio" value={order.merchant_id ? <Link href={`/comercios/${order.merchant_id}`} className="text-blue hover:underline">{order.merchant_name}</Link> : (order.merchant_name ?? "Envío")} />
+                <StatInline label="Comercio" value={order.merchant_id && canAccess(ctx.role, "comercios") ? <Link href={`/comercios/${order.merchant_id}`} className="text-blue hover:underline">{order.merchant_name}</Link> : (order.merchant_name ?? "Envío")} />
                 <StatInline label="Total" value={formatCOP(order.total, true)} />
                 <StatInline label="Hora del pedido" value={fmtTime(order.placed_at)} />
                 <StatInline label="Repartidor" value={order.courier_name ?? "—"} />

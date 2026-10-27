@@ -13,6 +13,16 @@ import { ListSkeleton } from "@/components/customer/QueryState";
 
 const LABELS = ["Casa", "Trabajo", "Otro"];
 
+/** true si `href` apunta al formulario de dirección (07), en cualquier grupo. */
+export function isAddressRoute(href: string): boolean {
+  return /\/address$/.test(href.split("?")[0]);
+}
+
+/** true si `href` apunta a la pantalla de ubicación (06), en cualquier grupo. */
+export function isLocationRoute(href: string): boolean {
+  return /\/location$/.test(href.split("?")[0]);
+}
+
 /** Pantalla 07 · Detalles de la dirección. `?id=` edita; `?lat&lng` precargan coordenadas. */
 export function AddressForm({ group }: { group: "auth" | "customer" }) {
   const router = useRouter();
@@ -48,8 +58,19 @@ export function AddressForm({ group }: { group: "auth" | "customer" }) {
   const lat = params.lat ? Number(params.lat) : existing.data?.lat ?? null;
   const lng = params.lng ? Number(params.lng) : existing.data?.lng ?? null;
 
+  /** Ruta para volver a este formulario después de iniciar sesión, sin perder lo que el invitado ya eligió. */
+  function returnHref(): string {
+    const q = new URLSearchParams();
+    if (lat != null && lng != null) { q.set("lat", String(lat)); q.set("lng", String(lng)); }
+    if (line1.trim()) q.set("line1", line1.trim());
+    if (params.next && !isAddressRoute(params.next) && !isLocationRoute(params.next)) q.set("next", params.next);
+    const qs = q.toString();
+    return `/(customer)/address${qs ? `?${qs}` : ""}`;
+  }
+
   async function save() {
-    if (!requireAuth()) return;
+    // El invitado inicia sesión y vuelve a (customer)/address con coordenadas y dirección (las de (auth) se pierden).
+    if (!session) { requireAuth(returnHref()); return; }
     if (!line1.trim()) { setError("Escribe la dirección."); return; }
     const finalLabel = label === "Otro" ? (customLabel.trim() || "Otro") : label;
     setSaving(true); setError(null);
@@ -63,7 +84,9 @@ export function AddressForm({ group }: { group: "auth" | "customer" }) {
       await qc.invalidateQueries({ queryKey: ["addresses"] });
       await activateAddress(row);
       const next = params.next;
-      if (next) router.replace(next as never);
+      // Guard: si `next` es este mismo flujo (06/07), volver ahí lo mostraría vacío y en bucle.
+      if (next && !isAddressRoute(next) && !isLocationRoute(next)) router.replace(next as never);
+      else if (next) router.replace("/(customer)" as never);
       else if (router.canGoBack()) router.back();
       else router.replace("/(customer)" as never);
     } catch (e) {

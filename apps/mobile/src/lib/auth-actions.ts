@@ -42,10 +42,17 @@ export async function signInWithApple() {
   if (Platform.OS !== "ios") throw new Error("Apple solo está disponible en iOS");
   const rawNonce = Crypto.randomUUID();
   const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
-  const credential = await AppleAuthentication.signInAsync({
-    requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
-    nonce: hashedNonce,
-  });
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+      nonce: hashedNonce,
+    });
+  } catch (e) {
+    // El usuario cerró la hoja de Apple: no es un error que haya que mostrar.
+    if ((e as { code?: string }).code === "ERR_REQUEST_CANCELED") return null;
+    throw e;
+  }
   if (!credential.identityToken) throw new Error("No se recibió el token de Apple");
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: "apple", token: credential.identityToken, nonce: rawNonce });
   if (error) throw error;

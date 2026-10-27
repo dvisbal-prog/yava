@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Alert, ScrollView } from "react-native";
+import { View, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Screen, Header, Text, Input, Button, Chip, Logo } from "@/components/ui";
@@ -8,6 +8,7 @@ import { useCities } from "@/features/merchant/useMerchant";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/store/auth";
 import { errorMessage } from "@/lib/errors";
+import { notify } from "@/lib/dialog";
 
 type Vehicle = "moto" | "bicicleta" | "carro" | "a_pie";
 
@@ -37,7 +38,7 @@ export default function CourierRegister() {
 
   const submit = async () => {
     setTouched(true);
-    if (!valid) { Alert.alert("Completa los datos", "Revisa los campos marcados."); return; }
+    if (!valid) { notify("Completa los datos", "Revisa los campos marcados."); return; }
     setSubmitting(true);
     try {
       await updateProfile({ full_name: fullName.trim(), phone: phone.trim(), city_id: cityId });
@@ -47,7 +48,7 @@ export default function CourierRegister() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.replace("/(onboarding)/courier-documents");
     } catch (e) {
-      Alert.alert("No se pudo registrar", errorMessage(e));
+      notify("No se pudo registrar", errorMessage(e));
     } finally { setSubmitting(false); }
   };
 

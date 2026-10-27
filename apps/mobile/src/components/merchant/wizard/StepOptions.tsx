@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Pressable, Alert } from "react-native";
+import { View, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, formatCOP } from "@yava/shared";
 import { Text, Input, Button, Card } from "@/components/ui";
 import { SwitchRow } from "@/components/merchant/Rows";
 import { useProductDraft, nextKey, parsePrice } from "@/features/merchant/productDraft";
 import type { DraftGroup, DraftOption } from "@/features/merchant/productDraft";
+import { confirm, notify } from "@/lib/dialog";
 import { WizardFrame } from "./WizardFrame";
 
 function newGroup(): DraftGroup {
@@ -22,11 +23,13 @@ export function StepOptions() {
   const updateGroup = (key: string, patch: Partial<DraftGroup>) => d.setGroups((gs) => gs.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   const updateOption = (gkey: string, okey: string, patch: Partial<DraftOption>) =>
     d.setGroups((gs) => gs.map((g) => (g.key === gkey ? { ...g, options: g.options.map((o) => (o.key === okey ? { ...o, ...patch } : o)) } : g)));
-  const removeGroup = (key: string) => Alert.alert("Eliminar grupo", "Se quitarán también sus opciones.", [{ text: "Cancelar", style: "cancel" }, { text: "Eliminar", style: "destructive", onPress: () => d.setGroups((gs) => gs.filter((g) => g.key !== key)) }]);
+  const removeGroup = async (key: string) => {
+    if (await confirm("Eliminar grupo", "Se quitarán también sus opciones.", { okText: "Eliminar", destructive: true })) d.setGroups((gs) => gs.filter((g) => g.key !== key));
+  };
 
   const invalid = d.groups.find((g) => g.name.trim() && Number(g.minSelect || 0) > Math.max(1, Number(g.maxSelect || 1)));
   const next = () => {
-    if (invalid) { Alert.alert("Revisa las opciones", `En "${invalid.name}" el mínimo no puede superar el máximo.`); return; }
+    if (invalid) { notify("Revisa las opciones", `En "${invalid.name}" el mínimo no puede superar el máximo.`); return; }
     d.setStep(isEdit ? "details" : "availability");
   };
 

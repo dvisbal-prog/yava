@@ -1,14 +1,26 @@
+import { Platform } from "react-native";
 import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { supabase } from "@/lib/supabase";
 
-/** Lee un archivo local como ArrayBuffer (expo-file-system). */
+/**
+ * Lee un archivo local como ArrayBuffer. En web el selector devuelve URIs blob:/data:, que
+ * expo-file-system no puede abrir: ahí se lee con fetch. En iOS/Android se usa expo-file-system.
+ */
 export async function readLocalFile(uri: string): Promise<ArrayBuffer> {
+  if (Platform.OS === "web") {
+    const res = await fetch(uri);
+    if (!res.ok) throw new Error("No se pudo leer el archivo seleccionado.");
+    return res.arrayBuffer();
+  }
   const file = new File(uri);
   return file.arrayBuffer();
 }
 
 function contentTypeFor(uri: string, fallback = "image/jpeg"): string {
+  // data:image/png;base64,... (web)
+  const dataMime = /^data:([^;,]+)[;,]/i.exec(uri);
+  if (dataMime) return dataMime[1].toLowerCase();
   const lower = uri.toLowerCase().split("?")[0];
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".webp")) return "image/webp";
@@ -23,8 +35,19 @@ function contentTypeFor(uri: string, fallback = "image/jpeg"): string {
  * Devuelve la ruta guardada.
  */
 export async function uploadLocalFile(bucket: string, path: string, uri: string, contentType?: string): Promise<string> {
-  const body = await readLocalFile(uri);
-  const { error } = await supabase.storage.from(bucket).upload(path, body, { contentType: contentType ?? contentTypeFor(uri), upsert: true });
+  let body: ArrayBuffer;
+  let type = contentType;
+  if (Platform.OS === "web") {
+    // En web el blob trae su tipo real (las URIs blob: no tienen extensión).
+    const res = await fetch(uri);
+    if (!res.ok) throw new Error("No se pudo leer el archivo seleccionado.");
+    const blob = await res.blob();
+    body = await blob.arrayBuffer();
+    type = type ?? (blob.type || undefined);
+  } else {
+    body = await readLocalFile(uri);
+  }
+  const { error } = await supabase.storage.from(bucket).upload(path, body, { contentType: type ?? contentTypeFor(uri), upsert: true });
   if (error) throw error;
   return path;
 }

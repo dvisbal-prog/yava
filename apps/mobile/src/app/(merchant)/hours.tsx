@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Alert, Switch } from "react-native";
+import { View, Switch } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { colors } from "@yava/shared";
@@ -9,6 +9,7 @@ import { useMyMerchant, useMerchantHours, useUpdateMerchant } from "@/features/m
 import { WEEKDAY_LONG, shortTime } from "@/features/merchant/types";
 import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/lib/query";
+import { notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 interface DayRow { weekday: number; enabled: boolean; opens: string; closes: string }
@@ -48,9 +49,9 @@ export default function MerchantHours() {
 
   const save = async () => {
     if (!m || !days) return;
-    if (!name.trim()) { Alert.alert("Nombre requerido", "El comercio necesita un nombre."); return; }
+    if (!name.trim()) { notify("Nombre requerido", "El comercio necesita un nombre."); return; }
     const bad = days.find((d) => d.enabled && (!TIME_RE.test(d.opens) || !TIME_RE.test(d.closes)));
-    if (bad) { Alert.alert("Horario inválido", `Revisa el horario del ${WEEKDAY_LONG[bad.weekday].toLowerCase()} (formato HH:MM).`); return; }
+    if (bad) { notify("Horario inválido", `Revisa el horario del ${WEEKDAY_LONG[bad.weekday].toLowerCase()} (formato HH:MM).`); return; }
     setSaving(true);
     try {
       await update.mutateAsync({ merchantId: m.id, patch: { name: name.trim(), tagline: tagline.trim() || null, description: description.trim() || null, phone: phone.trim() || null, address: address.trim() || null, prep_min: Number(prepMin || 20), prep_max: Math.max(Number(prepMin || 20), Number(prepMax || 35)) } });
@@ -64,7 +65,7 @@ export default function MerchantHours() {
       queryClient.invalidateQueries({ queryKey: ["merchant-hours", m.id] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
-    } catch (e) { Alert.alert("No se pudo guardar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo guardar", errorMessage(e)); }
     finally { setSaving(false); }
   };
 

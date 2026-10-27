@@ -34,6 +34,7 @@ export default function Filters() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <Chip label="Todos" selected={f.maxTime === null} onPress={() => setF({ ...f, maxTime: null })} />
         <Chip label="Hasta 30 min" selected={f.maxTime === 30} onPress={() => setF({ ...f, maxTime: 30 })} />
+        <Chip label="Hasta 35 min" selected={f.maxTime === 35} onPress={() => setF({ ...f, maxTime: 35 })} />
         <Chip label="Hasta 45 min" selected={f.maxTime === 45} onPress={() => setF({ ...f, maxTime: 45 })} />
       </ScrollView>
 

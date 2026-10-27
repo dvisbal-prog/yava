@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Switch, Alert } from "react-native";
+import { View, Switch } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { colors, formatCOP } from "@yava/shared";
@@ -10,7 +10,8 @@ import { OrderCard } from "@/components/merchant/OrderCard";
 import { ErrorState, SectionTitle, StatusDot } from "@/components/merchant/Rows";
 import { useMyMerchant, useMerchantDashboard, useMerchantOrders, useToggleMerchantClosed } from "@/features/merchant/useMerchant";
 import { startOfToday, startOfDaysAgo, WEEKDAY_SHORT } from "@/features/merchant/types";
-import { errorMessage } from "@/lib/errors";
+import { notify } from "@/lib/dialog";
+import { errorMessage, isUnauthorized } from "@/lib/errors";
 
 type Range = "today" | "week";
 
@@ -30,7 +31,7 @@ export default function MerchantHome() {
     if (!merchant) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     try { await toggle.mutateAsync({ merchantId: merchant.id, closed: !value }); }
-    catch (e) { Alert.alert("No se pudo cambiar el estado", errorMessage(e)); }
+    catch (e) { notify("No se pudo cambiar el estado", errorMessage(e)); }
   };
 
   const bars = useMemo(() => {
@@ -63,7 +64,11 @@ export default function MerchantHome() {
 
       <Segmented items={[{ key: "today", label: "Hoy" }, { key: "week", label: "Semana" }]} value={range} onChange={setRange} />
 
-      {dashQ.isError ? <ErrorState message={errorMessage(dashQ.error)} onRetry={() => dashQ.refetch()} /> : (
+      {dashQ.isError ? (
+        isUnauthorized(dashQ.error)
+          ? <ErrorState message="No tienes permiso para ver las ventas de este comercio. Pídele acceso al administrador o escríbenos a soporte." />
+          : <ErrorState message={errorMessage(dashQ.error)} onRetry={() => dashQ.refetch()} />
+      ) : (
         <View style={{ flexDirection: "row", marginTop: 14, gap: 8 }}>
           {dashQ.isLoading ? <><Skeleton height={76} style={{ flex: 1 }} /><Skeleton height={76} style={{ flex: 1 }} /><Skeleton height={76} style={{ flex: 1 }} /></> : (
             <>
@@ -77,15 +82,15 @@ export default function MerchantHome() {
       {dashQ.data ? <Text variant="caption" tone="muted" style={{ marginTop: 8 }}>Recibes {formatCOP(dashQ.data.payout)} por los pedidos entregados en este periodo.</Text> : null}
 
       <SectionTitle title="Ventas esta semana" actionTitle="Ver liquidaciones" onAction={() => router.push("/(merchant)/settlements")} />
-      <Card>{dashQ.isLoading ? <Skeleton height={140} /> : <BarChart bars={bars} formatValue={(v) => formatCOP(v)} />}</Card>
+      {dashQ.isError ? null : <Card>{dashQ.isLoading ? <Skeleton height={140} /> : <BarChart bars={bars} formatValue={(v) => formatCOP(v)} />}</Card>}
 
-      <SectionTitle title="Pedidos por atender" actionTitle="Ver pedidos" onAction={() => router.push("/(merchant)/orders")} />
+      <SectionTitle title="Pedidos por atender" actionTitle="Ver pedidos" onAction={() => router.navigate("/(merchant)/orders")} />
       {pendingQ.isLoading ? <Skeleton height={120} style={{ marginBottom: 12 }} /> : pendingQ.isError ? <ErrorState message={errorMessage(pendingQ.error)} onRetry={() => pendingQ.refetch()} /> : (pendingQ.data ?? []).length === 0 ? (
         <EmptyState icon="checkmark-done-outline" title="Todo al día" body="No tienes pedidos pendientes por aceptar." />
       ) : (
         <>
           {(pendingQ.data ?? []).slice(0, 3).map((o) => <OrderCard key={o.id ?? ""} order={o} compact onPress={() => router.push(`/(merchant)/order/${o.id}`)} />)}
-          {(pendingQ.data ?? []).length > 3 ? <Button title={`Ver los ${(pendingQ.data ?? []).length} pedidos`} variant="secondary" onPress={() => router.push("/(merchant)/orders")} /> : null}
+          {(pendingQ.data ?? []).length > 3 ? <Button title={`Ver los ${(pendingQ.data ?? []).length} pedidos`} variant="secondary" onPress={() => router.navigate("/(merchant)/orders")} /> : null}
         </>
       )}
       {(dashQ.data?.preparing ?? 0) > 0 ? <Button title={`Vista cocina · ${dashQ.data?.preparing} en preparación`} variant="outline" icon="flame-outline" onPress={() => router.push("/(merchant)/prepare")} style={{ marginTop: 12 }} /> : null}

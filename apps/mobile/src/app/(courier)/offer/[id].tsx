@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,6 +11,7 @@ import { useAvailableOrder, useAcceptOrder, useCourierOrder } from "@/features/c
 import { formatKm } from "@/features/courier/types";
 import { parseAddress, addressLine } from "@/features/merchant/types";
 import { errorMessage } from "@/lib/errors";
+import { alert } from "@/lib/dialog";
 
 /** Pantalla 61 · Nueva entrega (oferta). */
 export default function CourierOffer() {
@@ -29,7 +30,7 @@ export default function CourierOffer() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.replace(`/(courier)/deliveries/${id}/pickup`);
     } catch (e) {
-      Alert.alert("No se pudo aceptar", errorMessage(e), [{ text: "Volver", onPress: () => router.back() }]);
+      alert("No se pudo aceptar", errorMessage(e), [{ text: "Volver", onPress: () => (router.canGoBack() ? router.back() : router.replace("/(courier)")) }]);
     }
   };
 

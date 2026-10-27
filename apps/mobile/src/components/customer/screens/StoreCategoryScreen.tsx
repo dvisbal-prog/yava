@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +14,32 @@ import { ProductTile } from "@/components/customer/ProductRow";
 import { ErrorState, ListSkeleton, CardsSkeleton } from "@/components/customer/QueryState";
 import { CartBar } from "@/components/customer/CartBar";
 import { useNearbyMerchants, useProductsOfMerchants } from "@/features/customer";
-import type { ProductRow as ProductRowData, NearbyMerchant } from "@/features/customer";
+import type { ProductRow as ProductRowData, ProductCategoryRow, NearbyMerchant } from "@/features/customer";
+import { confirm } from "@/lib/dialog";
+
+/** Minúsculas y sin tildes, para comparar nombres de categoría. */
+function norm(s: string): string {
+  return s.toLowerCase().trim()
+    .replace(/[áàä]/g, "a").replace(/[éèë]/g, "e").replace(/[íìï]/g, "i").replace(/[óòö]/g, "o").replace(/[úùü]/g, "u").replace(/ñ/g, "n");
+}
+
+/** Palabras con las que cada chip reconoce las categorías (product_categories.name) de cada tienda. */
+const CHIP_KEYWORDS: Record<string, string[]> = {
+  frutas: ["fruta"], verduras: ["verdura", "hortaliza"], lacteos: ["lacteo", "leche", "queso", "yogur"], despensa: ["despensa", "abarrote", "grano"], aseo: ["aseo", "limpieza"],
+  "dolor y fiebre": ["dolor", "fiebre", "analgesico"], gripa: ["gripa", "gripe", "resfriado", "antigripal"], vitaminas: ["vitamina", "suplemento"],
+  "cuidado personal": ["cuidado personal", "higiene"], bebes: ["bebe", "infantil", "panal"],
+};
+
+/** ids de las categorías (de cualquier tienda) que corresponden a un chip. */
+function categoryIdsForChip(chip: string, categories: ProductCategoryRow[]): Set<string> {
+  const c = norm(chip);
+  const keys = CHIP_KEYWORDS[c] ?? [c];
+  return new Set(categories.filter((cat) => { const n = norm(cat.name); return n === c || keys.some((k) => n.includes(k)); }).map((cat) => cat.id));
+}
+
+/** Productos que se muestran en "Lo esencial". Se piden más para que el filtro por categoría encuentre resultados. */
+const ESSENTIALS_SHOWN = 12;
+const ESSENTIALS_FETCH = 60;
 
 /** Plantilla de Mercado (25) y Farmacia (29): tiendas cercanas + "Lo esencial" con compra directa. */
 export function StoreCategoryScreen({ category, title, subtitle, notice, searchPlaceholder, chips }: {
@@ -23,16 +48,16 @@ export function StoreCategoryScreen({ category, title, subtitle, notice, searchP
   const router = useRouter();
   const merchants = useNearbyMerchants(category);
   const ids = useMemo(() => (merchants.data ?? []).map((m) => m.id), [merchants.data]);
-  const products = useProductsOfMerchants(ids, 12);
+  const products = useProductsOfMerchants(ids, ESSENTIALS_FETCH);
   const addLine = useCart((s) => s.addLine);
   const replaceWith = useCart((s) => s.replaceWith);
   const [chip, setChip] = React.useState<string | null>(null);
 
   const filteredProducts = useMemo(() => {
-    const list = products.data ?? [];
-    if (!chip) return list;
-    const c = chip.toLowerCase();
-    return list.filter((p) => p.name.toLowerCase().includes(c) || (p.description ?? "").toLowerCase().includes(c));
+    const list = products.data?.products ?? [];
+    if (!chip) return list.slice(0, ESSENTIALS_SHOWN);
+    const catIds = categoryIdsForChip(chip, products.data?.categories ?? []);
+    return list.filter((p) => p.category_id != null && catIds.has(p.category_id)).slice(0, ESSENTIALS_SHOWN);
   }, [products.data, chip]);
 
   function addDirect(p: ProductRowData, m: NearbyMerchant) {
@@ -40,10 +65,11 @@ export function StoreCategoryScreen({ category, title, subtitle, notice, searchP
     const line = { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] };
     const res = addLine(merchant, line);
     if (res === "different_merchant") {
-      Alert.alert("Ya tienes una canasta", `Tu canasta tiene productos de otro comercio. ¿Quieres vaciarla y agregar ${p.name}?`, [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Vaciar canasta y agregar", style: "destructive", onPress: () => { replaceWith(merchant, line); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } },
-      ]);
+      void confirm("Ya tienes una canasta", `Tu canasta tiene productos de otro comercio. ¿Quieres vaciarla y agregar ${p.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
+        if (!ok) return;
+        replaceWith(merchant, line);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      });
       return;
     }
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

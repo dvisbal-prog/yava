@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatCOP } from "@yava/shared";
 import { Screen, Header, Text, Button, Input, Chip, Card } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { supabase } from "@/lib/supabase";
@@ -12,9 +11,11 @@ import { useOrder } from "@/features/customer";
 
 const MERCHANT_TAGS = ["Buen sabor", "Bien empacado", "Porciones generosas", "Llegó frío", "Faltó algo", "Demorado"];
 const COURIER_TAGS = ["Amable", "Rápido", "Cuidadoso", "Buena comunicación", "Demorado"];
-const TIPS = [0, 2000, 3000, 5000];
 
-/** Pantalla 24 · Calificar pedido (comercio, repartidor, etiquetas, comentario y propina). */
+/**
+ * Pantalla 24 · Calificar pedido (comercio, repartidor, etiquetas y comentario).
+ * La propina del diseño queda fuera hasta que exista el cobro y el abono al repartidor: no se muestra ni se guarda `tip`.
+ */
 export default function RateOrder() {
   const router = useRouter();
   const qc = useQueryClient();
@@ -26,7 +27,6 @@ export default function RateOrder() {
   const [courierRating, setCourierRating] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState("");
-  const [tip, setTip] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -41,7 +41,7 @@ export default function RateOrder() {
       const { error: e } = await supabase.from("ratings").insert({
         order_id: id, customer_id: uid, merchant_id: o.merchant_id, courier_id: o.courier_id,
         merchant_rating: o.merchant_id ? merchantRating : null, courier_rating: o.courier_id ? courierRating : null,
-        comment: comment.trim() || null, tags, tip,
+        comment: comment.trim() || null, tags,
       });
       if (e) throw e;
       void qc.invalidateQueries({ queryKey: ["rating", id] });
@@ -70,10 +70,6 @@ export default function RateOrder() {
           <View style={{ marginTop: 12 }}><StarRating value={courierRating} onChange={setCourierRating} /></View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16, justifyContent: "center" }}>
             {COURIER_TAGS.map((t) => <Chip key={t} label={t} selected={tags.includes(t)} onPress={() => toggleTag(t)} />)}
-          </View>
-          <Text variant="caption" tone="muted" style={{ marginTop: 18, marginBottom: 8 }}>Propina para tu repartidor (opcional)</Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {TIPS.map((t) => <Chip key={t} label={t === 0 ? "Sin propina" : formatCOP(t)} selected={tip === t} onPress={() => setTip(t)} />)}
           </View>
         </Card>
       ) : null}

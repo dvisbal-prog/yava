@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,6 +10,7 @@ import { useCart } from "@/store/cart";
 import { useLocation } from "@/store/location";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
+import { notify } from "@/lib/dialog";
 import { PriceBreakdown, ErrorState } from "@/components/customer";
 import { useAddresses, useCoverage, useCoupon, usePaymentMethods, useCheckout, activateAddress, etaLabel, loginHref, WOMPI_PUBLIC_KEY, openWompi, type OrderSummaryRow } from "@/features/customer";
 
@@ -119,7 +120,7 @@ export default function Checkout() {
       <Screen><Header title="Revisar y pagar" />
         <EmptyState icon="map-outline" title="Aún no llegamos a tu zona" body={`${activeAddress?.line1 ?? "Tu dirección"} está fuera de nuestra cobertura. Prueba con otra dirección en Puerto Colombia o Barranquilla.`}
           actionTitle="Cambiar dirección" onAction={() => router.push("/modal/address-picker" as never)}
-          secondaryTitle="Avísame cuando lleguen" onSecondary={() => Alert.alert("Te avisaremos", "Te notificaremos cuando YAVA llegue a tu zona.")} />
+          secondaryTitle="Avísame cuando lleguen" onSecondary={() => notify("Te avisaremos", "Te notificaremos cuando YAVA llegue a tu zona.")} />
         <Button title="Volver al inicio" variant="ghost" onPress={() => router.replace("/(customer)" as never)} />
       </Screen>
     );

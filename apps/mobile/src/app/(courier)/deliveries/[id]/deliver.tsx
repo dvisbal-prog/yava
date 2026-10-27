@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Alert, Linking } from "react-native";
+import { View, Linking } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +15,7 @@ import { parseAddress, addressLine } from "@/features/merchant/types";
 import { useRealtimeOrder } from "@/hooks/useRealtimeOrder";
 import { errorMessage } from "@/lib/errors";
 import { openInMaps } from "@/features/courier/maps";
+import { confirm, notify } from "@/lib/dialog";
 
 /** Pantalla 63 · Confirmar entrega (código de 4 dígitos o efectivo). */
 export default function CourierDeliver() {
@@ -61,14 +62,14 @@ export default function CourierDeliver() {
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       setCode("");
-      Alert.alert("No se pudo confirmar", errorMessage(e));
+      notify("No se pudo confirmar", errorMessage(e));
     }
   };
 
-  const confirmCash = () => Alert.alert(`Cobrar ${formatCOP(order.total)}`, "¿Recibiste el pago completo en efectivo?", [
-    { text: "Todavía no", style: "cancel" },
-    { text: "Sí, entregado", onPress: () => complete("EFECTIVO") },
-  ]);
+  const confirmCash = async () => {
+    const ok = await confirm(`Cobrar ${formatCOP(order.total)}`, "¿Recibiste el pago completo en efectivo?", { okText: "Sí, entregado", cancelText: "Todavía no" });
+    if (ok) await complete("EFECTIVO");
+  };
 
   return (
     <Screen padded={false} footer={<View>
@@ -93,7 +94,7 @@ export default function CourierDeliver() {
           <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
             {order.customer_phone ? <Button title="Llamar" variant="outline" size="md" icon="call-outline" onPress={() => Linking.openURL(`tel:${order.customer_phone}`).catch(() => {})} style={{ flex: 1 }} /> : null}
             <Button title="Chat" variant="outline" size="md" icon="chatbubble-ellipses-outline" onPress={() => router.push(`/(courier)/deliveries/${order.id}/chat`)} style={{ flex: 1 }} />
-            <Button title="Maps" variant="secondary" size="md" icon="map-outline" onPress={() => order.delivery_lat != null && order.delivery_lng != null ? openInMaps(order.delivery_lat, order.delivery_lng, addressLine(addr)) : Alert.alert("Sin coordenadas", addressLine(addr))} style={{ flex: 1 }} />
+            <Button title="Maps" variant="secondary" size="md" icon="map-outline" onPress={() => order.delivery_lat != null && order.delivery_lng != null ? openInMaps(order.delivery_lat, order.delivery_lng, addressLine(addr)) : notify("Sin coordenadas", addressLine(addr))} style={{ flex: 1 }} />
           </View>
         </Card>
         {isCash ? (

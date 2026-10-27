@@ -5,6 +5,7 @@ import { Constants, type CourierStatus } from "@yava/shared";
 import { actionContext } from "@/lib/auth";
 import { canManageFinance, canManageMerchants } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
+import { courierDocsBlocker } from "@/lib/documents";
 import { fail, requireReason, str, type ActionResult } from "@/lib/actions";
 
 function isCourierStatus(v: string): v is CourierStatus {
@@ -21,6 +22,15 @@ export async function setCourierStatusAction(fd: FormData): Promise<ActionResult
   if (!id || !reason) return { ok: false, error: "Indica un motivo." };
   if (!isCourierStatus(status)) return { ok: false, error: "Estado no válido." };
   const supabase = await createClient();
+  if (status === "active") {
+    const { data: current, error: e1 } = await supabase.from("couriers").select("status,vehicle").eq("user_id", id).single();
+    if (e1 || !current) return fail(e1, "Repartidor no encontrado.");
+    // Aprobar una solicitud exige documentos aprobados (reactivar a un suspendido no).
+    if (current.status === "pending" || current.status === "under_review") {
+      const blocker = await courierDocsBlocker(supabase, id, current.vehicle);
+      if (blocker) return { ok: false, error: blocker };
+    }
+  }
   const { error } = await supabase.rpc("admin_set_courier_status", { p_id: id, p_status: status, p_reason: reason });
   if (error) return fail(error);
   revalidatePath(`/repartidores/${id}`);
@@ -70,33 +80,24 @@ export async function withdrawalTransitionAction(fd: FormData): Promise<ActionRe
   if (status === "paid" && reference.length < 3) return { ok: false, error: "La referencia de la transferencia es obligatoria." };
 
   const supabase = await createClient();
-  const { data: before, error: e1 } = await supabase.from("courier_withdrawals").select("status,amount,courier_id").eq("id", id).single();
+  // Solo validación de la transición (lectura). La escritura, la devolución de saldo, la notificación
+  // y la auditoría ocurren de forma atómica en admin_withdrawal_transition (FOR UPDATE).
+  const { data: before, error: e1 } = await supabase.from("courier_withdrawals").select("status").eq("id", id).single();
   if (e1 || !before) return fail(e1, "Retiro no encontrado.");
   if (status === "approved" && before.status !== "pending") return { ok: false, error: "Solo se aprueban retiros pendientes." };
   if (status === "paid" && before.status !== "approved") return { ok: false, error: "Primero debe aprobarse." };
-  if (status === "rejected" && before.status === "paid") return { ok: false, error: "Un retiro pagado no se puede rechazar." };
+  if (before.status === "paid" || before.status === "rejected") return { ok: false, error: "El retiro ya fue procesado." };
 
-  const { error } = await supabase
-    .from("courier_withdrawals")
-    .update({ status, processed_by: auth.ctx.userId, processed_at: new Date().toISOString(), ...(reference ? { reference } : {}) })
-    .eq("id", id);
+  const { error } = await supabase.rpc("admin_withdrawal_transition", {
+    p_id: id,
+    p_status: status,
+    p_reason: reason,
+    ...(reference ? { p_reference: reference } : {}),
+  });
   if (error) return fail(error);
 
-  if (status === "rejected") {
-    // Devolver el saldo al repartidor (request_withdrawal lo descontó al solicitar).
-    const { data: c } = await supabase.from("couriers").select("balance").eq("user_id", before.courier_id).single();
-    if (c) await supabase.from("couriers").update({ balance: c.balance + before.amount }).eq("user_id", before.courier_id);
-  }
-
-  await supabase.rpc("audit", {
-    p_action: `withdrawal.${status}`,
-    p_entity: "courier_withdrawal",
-    p_entity_id: id,
-    p_reason: reason,
-    p_before: { status: before.status, amount: before.amount },
-    p_after: { status, reference: reference || null },
-  });
-  revalidatePath(`/repartidores/${courierId}`);
+  if (courierId) revalidatePath(`/repartidores/${courierId}`);
+  revalidatePath("/repartidores");
   const msg = status === "approved" ? "Retiro aprobado." : status === "paid" ? "Retiro marcado como pagado." : "Retiro rechazado y saldo devuelto.";
   return { ok: true, message: msg };
 }

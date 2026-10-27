@@ -139,16 +139,24 @@ export function useProductsByIds(ids: string[]) {
   });
 }
 
-/** Productos destacados de varios comercios (Mercado / Farmacia "Lo esencial"). */
+export interface MerchantsProducts {
+  products: ProductRow[];
+  /** Categorías de esos comercios (para filtrar por `category_id` con los chips de Mercado / Farmacia). */
+  categories: ProductCategoryRow[];
+}
+/** Productos destacados de varios comercios (Mercado / Farmacia "Lo esencial", Favoritos) + sus categorías. */
 export function useProductsOfMerchants(merchantIds: string[], limit = 12) {
   const key = [...merchantIds].sort().join(",");
   return useQuery({
     queryKey: ["products-of-merchants", key, limit],
     enabled: merchantIds.length > 0,
-    queryFn: async (): Promise<ProductRow[]> => {
-      const { data, error } = await supabase.from("products").select("*").in("merchant_id", merchantIds).eq("status", "published").order("sort").limit(limit);
-      throwIf(error);
-      return (data ?? []) as ProductRow[];
+    queryFn: async (): Promise<MerchantsProducts> => {
+      const [prods, cats] = await Promise.all([
+        supabase.from("products").select("*").in("merchant_id", merchantIds).eq("status", "published").order("sort").limit(limit),
+        supabase.from("product_categories").select("*").in("merchant_id", merchantIds).order("sort"),
+      ]);
+      throwIf(prods.error); throwIf(cats.error);
+      return { products: (prods.data ?? []) as ProductRow[], categories: (cats.data ?? []) as ProductCategoryRow[] };
     },
   });
 }

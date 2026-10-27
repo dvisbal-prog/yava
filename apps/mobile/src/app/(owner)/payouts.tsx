@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { View, Linking } from "react-native";
+import { View } from "react-native";
 import { colors, formatCOP, formatDate } from "@yava/shared";
 import { Screen, Header, Text, Card, Badge, Button, Skeleton, EmptyState, ListRow } from "@/components/ui";
 import { Segmented } from "@/components/merchant/Segmented";
 import { ErrorState } from "@/components/merchant/Rows";
 import { usePendingSettlements, useMerchantNames, useProfileNames } from "@/features/owner/useOwner";
-import { ADMIN_URL } from "@/features/owner/types";
+import { ADMIN_PATHS } from "@/features/owner/types";
+import { openAdmin } from "@/features/owner/links";
 import { SETTLEMENT_LABEL, SETTLEMENT_TONE } from "@/features/merchant/types";
 import { errorMessage } from "@/lib/errors";
 
@@ -28,7 +29,7 @@ export default function OwnerPayouts() {
     <Screen padded={false} refreshing={q.isFetching && !q.isLoading} onRefresh={() => q.refetch()}
       footer={<View>
         <Text variant="caption" tone="muted" style={{ textAlign: "center", marginBottom: 8 }}>Consulta el detalle y aprueba los pagos desde el panel web.</Text>
-        <Button title="Aprobar en el panel web" icon="open-outline" onPress={() => Linking.openURL(`${ADMIN_URL}/settlements`).catch(() => Linking.openURL(ADMIN_URL).catch(() => {}))} />
+        <Button title="Aprobar en el panel web" icon="open-outline" onPress={() => { void openAdmin(ADMIN_PATHS.settlements); }} />
       </View>}>
       <Header title="Pagos pendientes" subtitle="Fondos por entregar a terceros" />
       <View style={{ paddingHorizontal: 16 }}>
@@ -51,7 +52,7 @@ export default function OwnerPayouts() {
                     <ListRow key={s.id} icon={s.payee_type === "merchant" ? "storefront-outline" : "bicycle-outline"}
                       title={s.payee_type === "merchant" ? mNames.data?.[s.payee_id] ?? "Comercio" : cNames.data?.[s.payee_id] ?? "Repartidor"}
                       subtitle={`${s.payee_type === "merchant" ? "Comercio" : "Repartidor"} · ${formatDate(s.period_start)} – ${formatDate(s.period_end)} · ${s.orders_count} pedidos`}
-                      right={<View style={{ alignItems: "flex-end" }}><Text variant="bodyStrong">{formatCOP(s.net)}</Text><Badge label={s.status === "approved" ? "Programado" : SETTLEMENT_LABEL[s.status]} tone={SETTLEMENT_TONE[s.status]} /></View>} chevron={false} />
+                      right={<View style={{ alignItems: "flex-end" }}><Text variant="bodyStrong">{formatCOP(s.net)}</Text><Badge label={s.status === "approved" ? "Programado" : SETTLEMENT_LABEL[s.status]} tone={SETTLEMENT_TONE[s.status]} /></View>} onPress={() => { void openAdmin(`${ADMIN_PATHS.settlements}/${s.id}`); }} />
                   ))}
                 </View>
               </Card>

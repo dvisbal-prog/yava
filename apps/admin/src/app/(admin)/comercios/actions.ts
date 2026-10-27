@@ -5,6 +5,7 @@ import { Constants, type MerchantStatus } from "@yava/shared";
 import { actionContext } from "@/lib/auth";
 import { canEditCommission, canManageMerchants } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
+import { merchantDocsBlocker } from "@/lib/documents";
 import { fail, num, requireReason, str, type ActionResult } from "@/lib/actions";
 
 function isMerchantStatus(v: string): v is MerchantStatus {
@@ -21,6 +22,15 @@ export async function setMerchantStatusAction(fd: FormData): Promise<ActionResul
   if (!id || !reason) return { ok: false, error: "Indica un motivo." };
   if (!isMerchantStatus(status)) return { ok: false, error: "Estado no válido." };
   const supabase = await createClient();
+  if (status === "active") {
+    const { data: current, error: e1 } = await supabase.from("merchants").select("status").eq("id", id).single();
+    if (e1 || !current) return fail(e1, "Comercio no encontrado.");
+    // Aprobar una solicitud (o una rechazada) exige documentos aprobados; reactivar un pausado/suspendido no.
+    if (current.status === "pending" || current.status === "under_review" || current.status === "rejected") {
+      const blocker = await merchantDocsBlocker(supabase, id);
+      if (blocker) return { ok: false, error: blocker };
+    }
+  }
   const { error } = await supabase.rpc("admin_set_merchant_status", { p_id: id, p_status: status, p_reason: reason });
   if (error) return fail(error);
   revalidatePath(`/comercios/${id}`);

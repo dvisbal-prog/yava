@@ -7,6 +7,7 @@ import { Screen, Text, KPI, Card, Chip, Badge, Skeleton, EmptyState, StatusPill,
 import { Segmented } from "@/components/merchant/Segmented";
 import { HourlyChart } from "@/components/owner/HourlyChart";
 import { ErrorState, SectionTitle, StatusDot } from "@/components/merchant/Rows";
+import { OverviewError } from "@/components/owner/OverviewError";
 import { useAdminOverview, useActiveOrders, useRecentOrders, useOnlineCouriers, useOpenMerchants } from "@/features/owner/useOwner";
 import { useCities } from "@/features/merchant/useMerchant";
 import { VEHICLE_LABEL } from "@/features/courier/types";
@@ -48,7 +49,7 @@ export default function OwnerActivity() {
       </View>
 
       <SectionTitle title="Pedidos por hora" />
-      <Card>{ov.isLoading ? <Skeleton height={110} /> : ov.isError ? <ErrorState message={errorMessage(ov.error)} onRetry={() => ov.refetch()} /> : <HourlyChart data={o?.hourly ?? []} />}</Card>
+      <Card>{ov.isLoading ? <Skeleton height={110} /> : ov.isError ? <OverviewError error={ov.error} onRetry={() => ov.refetch()} /> : <HourlyChart data={o?.hourly ?? []} />}</Card>
 
       <View style={{ marginTop: 18 }}>
         <Segmented value={seg} onChange={setSeg} items={[{ key: "orders", label: "Pedidos" }, { key: "merchants", label: "Comercios" }, { key: "couriers", label: "Repartidores" }]} />

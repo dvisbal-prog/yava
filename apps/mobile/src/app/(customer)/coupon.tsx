@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, formatCOP, formatDate } from "@yava/shared";
@@ -7,6 +7,7 @@ import { Screen, Header, Text, Input, Button, Card, EmptyState } from "@/compone
 import { useCart } from "@/store/cart";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
+import { notify } from "@/lib/dialog";
 import { ErrorState, ListSkeleton } from "@/components/customer";
 import { useActiveCoupons, type CouponRow } from "@/features/customer";
 
@@ -47,7 +48,7 @@ export default function Coupon() {
       if (inCart && cart.subtotal() < c.min_order) { setError(`Este cupón aplica para pedidos desde ${formatCOP(c.min_order)}.`); return; }
       cart.setCoupon(c.code);
       if (inCart) router.back();
-      else Alert.alert("Cupón guardado", `${c.code} se aplicará en tu próximo pedido.`);
+      else notify("Cupón guardado", `${c.code} se aplicará en tu próximo pedido.`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {

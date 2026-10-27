@@ -4,17 +4,19 @@ import { notFound } from "next/navigation";
 import { formatCOP } from "@yava/shared";
 import { requireSection } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { fmtDate, fmtDateTime, fmtNumber } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtNumber, maskAccount } from "@/lib/format";
+import { canAccess } from "@/lib/roles";
 import { Card, CardBody, CardHeader, Note } from "@/components/ui/card";
 import { StatInline } from "@/components/ui/kpi";
 import { DataTable } from "@/components/ui/data-table";
 import { Badge, OrderStatusBadge, SettlementStatusBadge } from "@/components/ui/badge";
+import { MaskedAccount } from "@/components/ui/masked-account";
 import { SettlementActions } from "./settlement-actions";
 
 export const metadata: Metadata = { title: "Liquidación" };
 
 export default async function SettlementDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const [, { id }] = await Promise.all([requireSection("finanzas"), params]);
+  const [ctx, { id }] = await Promise.all([requireSection("finanzas"), params]);
   const supabase = await createClient();
 
   const { data: s } = await supabase.from("settlements").select("*").eq("id", id).maybeSingle();
@@ -34,7 +36,16 @@ export default async function SettlementDetailPage({ params }: { params: Promise
     | { user_id: string; document_number: string | null; bank_account: unknown; profile: { full_name: string | null; phone: string | null; email: string | null } | null; city: { name: string } | null }
     | null;
   const payeeName = payee ? ("name" in payee ? payee.name : (payee.profile?.full_name ?? "Repartidor")) : "—";
-  const payeeHref = payee ? ("name" in payee ? `/comercios/${payee.id}` : `/repartidores/${payee.user_id}`) : null;
+  const payeeHref = payee
+    ? "name" in payee
+      ? canAccess(ctx.role, "comercios")
+        ? `/comercios/${payee.id}`
+        : null
+      : canAccess(ctx.role, "repartidores")
+        ? `/repartidores/${payee.user_id}`
+        : null
+    : null;
+  const canOpenOrders = canAccess(ctx.role, "pedidos");
   const bankSnap = (s.bank_snapshot && typeof s.bank_snapshot === "object" && !Array.isArray(s.bank_snapshot) ? s.bank_snapshot : {}) as Record<string, string | undefined>;
   const bankNow = (payee?.bank_account && typeof payee.bank_account === "object" && !Array.isArray(payee.bank_account) ? payee.bank_account : {}) as Record<string, string | undefined>;
   const bankChanged = JSON.stringify(bankSnap) !== JSON.stringify(bankNow) && Object.keys(bankNow).length > 0;
@@ -90,7 +101,7 @@ export default async function SettlementDetailPage({ params }: { params: Promise
               dense
               rows={so ?? []}
               rowKey={(r) => r.order_id}
-              rowHref={(r) => `/pedidos/${r.order_id}`}
+              rowHref={canOpenOrders ? (r) => `/pedidos/${r.order_id}` : undefined}
               emptyTitle="Sin pedidos"
               columns={[
                 { key: "n", header: "Pedido", cell: (r) => <span className="font-medium">#{r.order?.number}</span> },
@@ -147,11 +158,11 @@ export default async function SettlementDetailPage({ params }: { params: Promise
                 <>
                   <StatInline label="Banco" value={bankSnap.bank ?? "—"} />
                   <StatInline label="Tipo" value={bankSnap.type ?? "—"} />
-                  <StatInline label="Número" value={<span className="font-mono">{bankSnap.number ?? "—"}</span>} />
+                  <StatInline label="Número" value={<MaskedAccount masked={maskAccount(bankSnap.number)} full={bankSnap.number} />} />
                   <StatInline label="Titular" value={bankSnap.holder ?? "—"} />
                 </>
               )}
-              {bankChanged ? <Note tone="warning" className="mt-3">La cuenta actual del beneficiario difiere de la registrada aquí. Verifica antes de pagar: {bankNow.bank} · {bankNow.number}</Note> : null}
+              {bankChanged ? <Note tone="warning" className="mt-3">La cuenta actual del beneficiario difiere de la registrada aquí. Verifica antes de pagar: {bankNow.bank} · {maskAccount(bankNow.number)}</Note> : null}
             </CardBody>
           </Card>
 

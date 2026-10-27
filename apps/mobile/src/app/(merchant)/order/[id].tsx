@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Alert, Linking } from "react-native";
+import { View, Linking } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,6 +10,7 @@ import { MoneyRow, ErrorState, SectionTitle } from "@/components/merchant/Rows";
 import { useOrderDetail, useMerchantSetStatus, useCancelOrder } from "@/features/merchant/useMerchant";
 import { parseAddress, addressLine, parseItemOptions } from "@/features/merchant/types";
 import { useRealtimeOrder } from "@/hooks/useRealtimeOrder";
+import { notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 const PAYMENT_LABEL: Record<PaymentMethod, string> = { cash: "Efectivo", card: "Tarjeta", pse: "PSE", nequi: "Nequi", daviplata: "Daviplata" };
@@ -41,18 +42,18 @@ export default function MerchantOrderDetail() {
       await setStatus.mutateAsync({ orderId: order.id, status: s, etaMin: s === "accepted" ? eta : undefined });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       if (s === "ready") router.back();
-    } catch (e) { Alert.alert("No se pudo actualizar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo actualizar", errorMessage(e)); }
   };
 
   const doReject = async () => {
     if (!order.id) return;
     const r = reason.trim();
-    if (r.length < 3) { Alert.alert("Indica el motivo", "Elige o escribe un motivo para el cliente."); return; }
+    if (r.length < 3) { notify("Indica el motivo", "Elige o escribe un motivo para el cliente."); return; }
     try {
       await cancel.mutateAsync({ orderId: order.id, reason: r });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       router.back();
-    } catch (e) { Alert.alert("No se pudo rechazar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo rechazar", errorMessage(e)); }
   };
 
   const footer = status === "placed" ? (

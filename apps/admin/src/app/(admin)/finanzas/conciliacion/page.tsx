@@ -7,6 +7,7 @@ import { getSelectedCity } from "@/lib/city";
 import { createClient } from "@/lib/supabase/server";
 import { fetchOverview, parseRange, rangeBounds } from "@/lib/overview";
 import { fmtDate, fmtDateTime, fmtNumber } from "@/lib/format";
+import { canAccess } from "@/lib/roles";
 import { firstParam, type SearchParams } from "@/lib/utils";
 import { Card, CardBody, CardHeader, Note } from "@/components/ui/card";
 import { StatInline } from "@/components/ui/kpi";
@@ -19,7 +20,7 @@ import { FinanceTabs } from "../finance-tabs";
 export const metadata: Metadata = { title: "Conciliación" };
 
 export default async function ReconciliationPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const [, sp, city] = await Promise.all([requireSection("finanzas"), searchParams, getSelectedCity()]);
+  const [ctx, sp, city] = await Promise.all([requireSection("finanzas"), searchParams, getSelectedCity()]);
   const range = parseRange(firstParam(sp.range));
   const { from, to } = rangeBounds(range);
   const supabase = await createClient();
@@ -136,7 +137,7 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
           emptyDescription="Los pagos en efectivo no generan registros de pasarela."
           columns={[
             { key: "d", header: "Fecha", cell: (p) => <span className="text-muted">{fmtDateTime(p.created_at)}</span> },
-            { key: "o", header: "Pedido", cell: (p) => <Link href={`/pedidos/${p.order_id}`} className="text-blue hover:underline font-medium">#{p.order?.number}</Link> },
+            { key: "o", header: "Pedido", cell: (p) => (canAccess(ctx.role, "pedidos") ? <Link href={`/pedidos/${p.order_id}`} className="text-blue hover:underline font-medium">#{p.order?.number}</Link> : <span className="font-medium">#{p.order?.number}</span>) },
             { key: "prov", header: "Proveedor", cell: (p) => p.provider },
             { key: "ref", header: "Referencia", cell: (p) => <span className="font-mono text-xs">{p.provider_ref ?? "—"}</span> },
             { key: "s", header: "Estado", cell: (p) => <PaymentStatusBadge status={p.status} /> },

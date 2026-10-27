@@ -18,7 +18,7 @@ docs/            Este documento, plan de lanzamiento y checklist de tiendas.
 |---------------|--------------------------------------|----------------------|
 | `(auth)`      | invitado → acceso, OTP, datos, ubicación | 01–07             |
 | `(customer)`  | cliente (también invitado explorando) | 08–48               |
-| `(merchant)`  | comercio (`merchant_members`)        | 49–56, 65–68, 73–80  |
+| `(merchant)`  | comercio (`merchant_members`); `(tabs)` = resumen, pedidos, menú, cuenta; el resto son pantallas de Stack | 49–56, 65–68, 73–80  |
 | `(courier)`   | repartidor (`couriers`)              | 57–64, 69–72         |
 | `(owner)`     | dirección (`admin_users`)            | 97–104               |
 | `(onboarding)`| registro comercio/repartidor (cualquier usuario autenticado) | 49, 57–59, 65 |
@@ -33,7 +33,7 @@ docs/            Este documento, plan de lanzamiento y checklist de tiendas.
 - **Estado local**: `useAuth`, `useCart` (persistido), `useLocation` (dirección activa) en `@/store`.
 - **UI**: usar SOLO `@/components/ui` (`Screen`, `Header`, `Text`, `Button`, `Input`, `SearchBar`, `Card`, `Chip`, `Badge`, `StatusPill`, `ListRow`, `Stepper`, `Divider`, `Skeleton`, `EmptyState`, `KPI`, `Logo`). Tokens desde `@yava/shared` (`colors`, `radius`, `spacing`, `typography`). Fondo blanco, texto carbón, azul `colors.blue` para acciones, amarillo acento, rojo solo alertas.
 - **Formato**: `formatCOP(38000)` → `$38.000`; `formatRating(4.8)` → `4,8`; `formatTime`.
-- **Errores**: `errorMessage(e)` de `@/lib/errors`; mostrar con `Alert.alert` o texto en el formulario (sin toasts externos).
+- **Errores**: `errorMessage(e)` de `@/lib/errors`; mostrar con `@/lib/dialog` (`alert`, `notify`, `confirm`, que también funcionan en web) o texto en el formulario (sin toasts externos). No usar `Alert.alert` directo.
 - **Copy** en español de Colombia, tuteo, frases cortas (como las maquetas: "Tu canasta", "Revisar y pagar", "Pedido confirmado").
 - **Imágenes**: `expo-image` (`Image` con `contentFit="cover"`). URLs públicas o `publicUrl(bucket, path)`.
 - Sin `any`. `tsc --noEmit` debe pasar. No agregar librerías nuevas sin necesidad; las instaladas: react-native-maps, expo-location, expo-image-picker, expo-image-manipulator, expo-notifications, expo-secure-store, expo-apple-authentication, expo-auth-session, expo-web-browser, expo-haptics, expo-clipboard, react-native-svg, @expo/vector-icons (Ionicons).
@@ -48,7 +48,8 @@ RPCs (llamar con `supabase.rpc("nombre", {...})`):
 - Cliente: `place_order(p_merchant_id, p_address_id, p_items, p_payment_method, p_payment_method_id, p_coupon_code, p_notes)` — `p_items = [{product_id, qty, option_ids[], notes}]`; `place_shipment(p_pickup, p_dropoff, p_package, p_payment_method, p_notes)`; `cancel_order(p_order_id, p_reason)`; `search_catalog(p_q, p_city)`; `nearby_merchants(p_lat, p_lng, p_category, p_radius_km)`; `coverage_for(p_lat, p_lng)`; `mark_notifications_read(p_ids)`.
 - Comercio: `register_merchant(p jsonb)`; `merchant_set_order_status(p_order_id, p_status, p_eta_min)` con `accepted|preparing|ready`; `merchant_dashboard(p_merchant, p_from)`.
 - Repartidor: `register_courier(p jsonb)`; `courier_submit_for_review()`; `courier_available_orders(p_lat, p_lng, p_radius_km)`; `courier_accept_order(p_order_id)`; `courier_set_order_status(p_order_id, p_status, p_delivery_code)` con `picked_up|on_the_way|delivered` (delivered exige el código de 4 dígitos, o `'EFECTIVO'` si pago en efectivo); `courier_update_location(p_lat, p_lng, p_order_id)`; `request_withdrawal(p_amount)`; `courier_dashboard()`.
-- Cuenta: `request_account_deletion()` (anonimiza y elimina el usuario; falla si hay pedidos en curso).
+- Cuenta: Edge Function `delete-account` → `anonymize_account(p_uid)` (falla si hay pedidos en curso, comercio activo o saldo de repartidor).
+- Repartidor (0013): `courier_set_online(p_online)` y `courier_update_settings(p_vehicle, p_plate, p_bank_account)`; ya no hay UPDATE directo sobre `couriers`.
 - Admin/Owner: `admin_overview(p_from, p_to, p_city)`; `admin_order_action(p_order_id, 'cancel'|'release_courier'|'force_status', p_reason, p_status)`; `admin_withdrawal_transition(p_id, p_status, p_reason, p_reference)`; `admin_merchant_stats(p_days)`; `admin_report(p_from, p_to, p_city)`; `invitation_preview(p_token)`; `admin_generate_settlements(p_start, p_end)`; `admin_settlement_transition(p_id, p_status, p_reason, p_reference)`; `admin_set_merchant_status(p_id, p_status, p_reason)`; `admin_set_courier_status(p_id, p_status, p_reason)`; `admin_invite(p_email, p_role)`; `admin_accept_invitation(p_token)`.
 
 Estados de pedido: `pending_payment → placed → accepted → preparing → ready → (assigned) → picked_up → on_the_way → delivered | cancelled`. Etiquetas en `ORDER_STATUS_LABEL`.
@@ -67,5 +68,9 @@ Next.js App Router, `@supabase/ssr` (cliente en `src/lib/supabase/server.ts` y `
 ## Pagos y tareas (Edge Functions · `supabase/functions`)
 
 - `wompi-webhook`: recibe eventos de Wompi, verifica firma y llama `confirm_payment` (service role). Pedido `pending_payment` → `placed` al aprobarse.
-- `send-push`: Database Webhook sobre `notifications` INSERT → Expo Push API usando `device_tokens`.
+- `send-push`: trigger `notifications_send_push` (0012) sobre `notifications` INSERT → Expo Push API usando `device_tokens`. Autentica con el header `x-yava-hook` (secreto en Vault).
 - `scheduled-jobs?job=expire_payments|owner_alerts|daily_summary`: programadas con `supabase/cron.sql` (pg_cron + pg_net).
+
+## Web
+
+`apps/mobile/metro.config.js` reemplaza `react-native-maps` por `src/lib/maps-web.tsx` (mapa OSM sin interacción) solo en web. `app.json` usa `web.output: "single"` (SPA).

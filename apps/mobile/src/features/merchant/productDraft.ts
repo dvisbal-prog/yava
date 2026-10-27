@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ProductFull } from "./useMerchant";
+import type { ProductRow } from "./types";
 
 export type WizardStep = "details" | "source" | "select" | "adjust" | "organize" | "options" | "availability" | "published";
 
@@ -60,6 +61,8 @@ export interface ProductDraft {
 interface DraftState extends ProductDraft {
   step: WizardStep;
   mode: "new" | "edit";
+  /** Estado del producto en la BD al abrir la edición (null en un producto nuevo). */
+  initialStatus: ProductRow["status"] | null;
   reset: (merchantId: string) => void;
   loadFromProduct: (full: ProductFull) => void;
   patch: (p: Partial<ProductDraft>) => void;
@@ -83,11 +86,13 @@ export const useProductDraft = create<DraftState>((set) => ({
   ...EMPTY,
   step: "details",
   mode: "new",
-  reset: (merchantId) => set({ ...EMPTY, merchantId, step: "details", mode: "new" }),
+  initialStatus: null,
+  reset: (merchantId) => set({ ...EMPTY, merchantId, step: "details", mode: "new", initialStatus: null }),
   loadFromProduct: ({ product, groups }) => set({
     ...EMPTY,
     mode: "edit",
     step: "details",
+    initialStatus: product.status,
     productId: product.id,
     merchantId: product.merchant_id,
     name: product.name,
@@ -129,14 +134,18 @@ export interface DraftValidation {
   missing: string[];
 }
 
-/** Requisitos para publicar: nombre, categoría, precio válido, descripción y al menos 1 foto subida. */
-export function validateForPublish(d: ProductDraft): DraftValidation {
+/**
+ * Requisitos para publicar: nombre, categoría, precio válido, descripción y al menos 1 foto subida.
+ * Con `pendingPhotosOk`, una foto local aún sin subir también cuenta (validación antes de guardar).
+ */
+export function validateForPublish(d: ProductDraft, opts: { pendingPhotosOk?: boolean } = {}): DraftValidation {
   const missing: string[] = [];
   if (!d.name.trim()) missing.push("nombre");
   if (!d.categoryId && !d.newCategoryName.trim()) missing.push("categoría");
   if (parsePrice(d.price) == null || parsePrice(d.price) === 0) missing.push("precio válido");
   if (!d.description.trim()) missing.push("descripción");
-  if (!d.photos.some((p) => p.upload === "done" && p.remoteUrl)) missing.push("al menos una foto cargada");
+  const hasPhoto = opts.pendingPhotosOk ? d.photos.length > 0 : d.photos.some((p) => p.upload === "done" && p.remoteUrl);
+  if (!hasPhoto) missing.push(opts.pendingPhotosOk ? "al menos una foto" : "al menos una foto cargada");
   return { ok: missing.length === 0, missing };
 }
 

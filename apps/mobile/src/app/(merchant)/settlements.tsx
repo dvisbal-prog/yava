@@ -5,7 +5,7 @@ import { colors, formatCOP, formatDate } from "@yava/shared";
 import { Screen, Header, Text, Card, Badge, EmptyState, Skeleton } from "@/components/ui";
 import { ErrorState, MoneyRow } from "@/components/merchant/Rows";
 import { useMyMerchant, useMerchantSettlements } from "@/features/merchant/useMerchant";
-import { parseBankAccount, SETTLEMENT_LABEL, SETTLEMENT_TONE } from "@/features/merchant/types";
+import { parseBankAccount, formatBankAccount, SETTLEMENT_LABEL, SETTLEMENT_TONE } from "@/features/merchant/types";
 import { errorMessage } from "@/lib/errors";
 
 
@@ -57,7 +57,7 @@ export default function MerchantSettlements() {
         <Text variant="heading" style={{ marginTop: 12, marginBottom: 8 }}>Cuenta bancaria</Text>
         <Card onPress={() => router.push("/(merchant)/bank")}>
           <Text variant="caption" tone="muted">Cuenta de abonos</Text>
-          <Text variant="bodyStrong">{bank ? `${bank.bank} · ${bank.type} ${bank.number}` : "Agrega tu cuenta bancaria"}</Text>
+          <Text variant="bodyStrong">{bank ? formatBankAccount(bank) : "Agrega tu cuenta bancaria"}</Text>
           {bank ? <Text variant="caption" tone="muted">{bank.holder}</Text> : null}
         </Card>
         <Text variant="caption" tone="subtle" style={{ marginTop: 12 }}>La fecha de abono se mostrará cuando se confirme el pago.</Text>

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Pressable, Alert } from "react-native";
+import { View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { useAuth } from "@/store/auth";
 import { useLocation } from "@/store/location";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
+import { notify, confirm } from "@/lib/dialog";
 import { RadioRow, ErrorState, ListSkeleton } from "@/components/customer";
 import { useAddresses, activateAddress, loginHref, type AddressRow } from "@/features/customer";
 
@@ -21,16 +22,12 @@ export default function Addresses() {
   const setAddress = useLocation((s) => s.setAddress);
   const addresses = useAddresses();
 
-  function remove(a: AddressRow) {
-    Alert.alert("Eliminar dirección", `¿Quieres eliminar "${a.label}"?`, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Eliminar", style: "destructive", onPress: async () => {
-        const { error } = await supabase.from("addresses").delete().eq("id", a.id);
-        if (error) { Alert.alert("No se pudo eliminar", errorMessage(error)); return; }
-        if (active?.id === a.id) setAddress(null);
-        void qc.invalidateQueries({ queryKey: ["addresses"] });
-      } },
-    ]);
+  async function remove(a: AddressRow) {
+    if (!(await confirm("Eliminar dirección", `¿Quieres eliminar "${a.label}"?`, { okText: "Eliminar", destructive: true }))) return;
+    const { error } = await supabase.from("addresses").delete().eq("id", a.id);
+    if (error) { notify("No se pudo eliminar", errorMessage(error)); return; }
+    if (active?.id === a.id) setAddress(null);
+    void qc.invalidateQueries({ queryKey: ["addresses"] });
   }
 
   if (!session) {
@@ -50,7 +47,7 @@ export default function Addresses() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               {a.is_default ? <Badge label="Principal" tone="blue" /> : null}
               <Pressable hitSlop={8} onPress={() => router.push(`/(customer)/address?id=${a.id}` as never)} style={{ padding: 4 }}><Ionicons name="create-outline" size={20} color={colors.gray500} /></Pressable>
-              <Pressable hitSlop={8} onPress={() => remove(a)} style={{ padding: 4 }}><Ionicons name="trash-outline" size={20} color={colors.gray500} /></Pressable>
+              <Pressable hitSlop={8} onPress={() => { void remove(a); }} style={{ padding: 4 }}><Ionicons name="trash-outline" size={20} color={colors.gray500} /></Pressable>
             </View>
           } />
       ))}

@@ -6,6 +6,8 @@ import { Screen, Header, Text, Button } from "@/components/ui";
 import { sendPhoneOtp, verifyPhoneOtp } from "@/lib/auth-actions";
 import { errorMessage } from "@/lib/errors";
 import { useNavIntent } from "@/features/customer/stores";
+import { maskPhone } from "@/features/customer/helpers";
+import { useAccess } from "@/store/access";
 
 const RESEND_SECONDS = 30;
 
@@ -14,6 +16,7 @@ export default function Verify() {
   const router = useRouter();
   const params = useLocalSearchParams<{ phone: string; next?: string }>();
   const setPendingNext = useNavIntent((s) => s.setPendingNext);
+  const markSeen = useAccess((s) => s.markSeen);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +38,7 @@ export default function Verify() {
     try {
       if (params.next) setPendingNext(params.next);
       await verifyPhoneOtp(params.phone, token);
+      markSeen();
       // El AuthGate del layout raíz redirige a /(customer); allí se completa el perfil si hace falta.
       router.replace("/(customer)" as never);
     } catch (e) {
@@ -62,7 +66,7 @@ export default function Verify() {
     <Screen footer={<Button title="Verificar" onPress={() => verify(code)} loading={busy} disabled={code.length !== 6} />}>
       <Header back />
       <Text variant="display" style={{ marginTop: 8 }}>Revisa tus mensajes</Text>
-      <Text tone="muted" style={{ marginTop: 6 }}>Ingresa el código que enviamos al {params.phone}.</Text>
+      <Text tone="muted" style={{ marginTop: 6 }}>Ingresa el código que enviamos al +57 {maskPhone((params.phone ?? "").slice(-10))}.</Text>
       <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginTop: 6, marginBottom: 28 }}><Text variant="caption" tone="primary" style={{ fontWeight: "600" }}>Cambiar número</Text></Pressable>
 
       <Pressable onPress={() => inputRef.current?.focus()} style={styles.boxes}>

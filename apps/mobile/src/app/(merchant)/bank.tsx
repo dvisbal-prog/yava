@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Screen, Header, Text, Input, Button, Chip } from "@/components/ui";
 import { useMyMerchant, useUpdateMerchant } from "@/features/merchant/useMerchant";
 import { parseBankAccount } from "@/features/merchant/types";
+import { notify } from "@/lib/dialog";
 import { errorMessage } from "@/lib/errors";
 
 const BANKS = ["Bancolombia", "Davivienda", "Nequi", "Daviplata", "BBVA", "Banco de Bogotá", "Otro"];
@@ -28,12 +29,12 @@ export default function MerchantBank() {
 
   const save = async () => {
     if (!m) return;
-    if (!bank.trim() || number.replace(/\D/g, "").length < 6 || !holder.trim()) { Alert.alert("Completa los datos", "Banco, número de cuenta y titular son obligatorios."); return; }
+    if (!bank.trim() || number.replace(/\D/g, "").length < 6 || !holder.trim()) { notify("Completa los datos", "Banco, número de cuenta y titular son obligatorios."); return; }
     try {
       await update.mutateAsync({ merchantId: m.id, patch: { bank_account: { bank: bank.trim(), type, number: number.trim(), holder: holder.trim() } } });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
-    } catch (e) { Alert.alert("No se pudo guardar", errorMessage(e)); }
+    } catch (e) { notify("No se pudo guardar", errorMessage(e)); }
   };
 
   return (

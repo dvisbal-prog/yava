@@ -13,3 +13,6 @@ android/
 supabase/.temp/
 supabase/.branches/
 .vercel
+
+# Export web de Expo
+apps/mobile/dist-web/

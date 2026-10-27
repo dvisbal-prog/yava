@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Screen, Header, Text, Button, EmptyState } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
+import { notify, confirm } from "@/lib/dialog";
 import { RadioRow, ErrorState, ListSkeleton } from "@/components/customer";
 import { usePaymentMethods, useCheckout, loginHref, WOMPI_PUBLIC_KEY } from "@/features/customer";
 
@@ -24,15 +25,11 @@ export default function PaymentMethods() {
     if (selecting) router.back();
   }
 
-  function remove(id: string) {
-    Alert.alert("Eliminar tarjeta", "¿Quieres quitar esta tarjeta?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Eliminar", style: "destructive", onPress: async () => {
-        const { error } = await supabase.from("payment_methods").delete().eq("id", id);
-        if (error) Alert.alert("No se pudo eliminar", errorMessage(error));
-        else { if (checkout.paymentMethodId === id) checkout.setMethod("cash"); void qc.invalidateQueries({ queryKey: ["payment-methods"] }); }
-      } },
-    ]);
+  async function remove(id: string) {
+    if (!(await confirm("Eliminar tarjeta", "¿Quieres quitar esta tarjeta?", { okText: "Eliminar", destructive: true }))) return;
+    const { error } = await supabase.from("payment_methods").delete().eq("id", id);
+    if (error) notify("No se pudo eliminar", errorMessage(error));
+    else { if (checkout.paymentMethodId === id) checkout.setMethod("cash"); void qc.invalidateQueries({ queryKey: ["payment-methods"] }); }
   }
 
   if (!session) {
@@ -56,7 +53,7 @@ export default function PaymentMethods() {
           ) : cards.map((c) => (
             <RadioRow key={c.id} icon="card-outline" title={`${c.brand ?? "Tarjeta"} •••• ${c.last4 ?? ""}`} subtitle={c.exp_month && c.exp_year ? `Vence ${String(c.exp_month).padStart(2, "0")}/${String(c.exp_year).slice(-2)}${c.is_default ? " · Principal" : ""}` : undefined}
               selected={checkout.method === "card" && (checkout.paymentMethodId === c.id || (!checkout.paymentMethodId && c.is_default))} onPress={() => choose("card", c.id)}
-              right={<Button title="Quitar" variant="ghost" size="sm" full={false} onPress={() => remove(c.id)} />} />
+              right={<Button title="Quitar" variant="ghost" size="sm" full={false} onPress={() => { void remove(c.id); }} />} />
           ))}
         </>
       ) : (

@@ -3,11 +3,11 @@ import { View } from "react-native";
 import { colors, formatCOP } from "@yava/shared";
 import { Screen, Text, Card, Skeleton, Divider } from "@/components/ui";
 import { Segmented } from "@/components/merchant/Segmented";
-import { MoneyRow, ErrorState, SectionTitle } from "@/components/merchant/Rows";
+import { MoneyRow, SectionTitle } from "@/components/merchant/Rows";
+import { OverviewError } from "@/components/owner/OverviewError";
 import { useAdminOverview } from "@/features/owner/useOwner";
 import { estimatedResult, rangeTitle, RANGE_LABEL } from "@/features/owner/types";
 import type { RangeKey } from "@/features/owner/types";
-import { errorMessage } from "@/lib/errors";
 
 /** Pantalla 99 · Ingresos y resultado. */
 export default function OwnerFinance() {
@@ -22,7 +22,7 @@ export default function OwnerFinance() {
         <Text variant="caption" tone="muted">{rangeTitle(range)}</Text>
       </View>
       <Segmented value={range} onChange={setRange} items={(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => ({ key: k, label: RANGE_LABEL[k] }))} />
-      {q.isError ? <ErrorState message={errorMessage(q.error)} onRetry={() => q.refetch()} /> : q.isLoading || !o ? (
+      {q.isError ? <OverviewError error={q.error} onRetry={() => q.refetch()} /> : q.isLoading || !o ? (
         <View style={{ marginTop: 14 }}><Skeleton height={100} style={{ marginBottom: 12 }} /><Skeleton height={140} style={{ marginBottom: 12 }} /><Skeleton height={220} /></View>
       ) : (() => {
         const result = estimatedResult(o);

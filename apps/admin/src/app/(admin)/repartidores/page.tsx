@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Bike, UserCheck, Wifi, AlertTriangle } from "lucide-react";
-import { COURIER_STATUS_LABEL, Constants, formatCOP, type CourierStatus } from "@yava/shared";
+import { ACTIVE_ORDER_STATUSES, COURIER_STATUS_LABEL, Constants, formatCOP, type CourierStatus } from "@yava/shared";
 import { requireSection } from "@/lib/auth";
 import { getSelectedCity } from "@/lib/city";
 import { createClient } from "@/lib/supabase/server";
 import { formatRating } from "@/lib/format";
+import { courierRequiredDocs, docsReadiness, type DocRow } from "@/lib/documents";
 import { buildQuery, firstParam, toInt, type SearchParams } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { KPI } from "@/components/ui/kpi";
@@ -53,15 +54,26 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
   if (city) query = query.eq("city_id", city);
   if (idsByName) query = idsByName.length ? query.in("user_id", idsByName) : query.in("user_id", ["00000000-0000-0000-0000-000000000000"]);
 
-  const [{ data: rows, count, error }, { count: total }, { count: online }, { count: toReview }, { data: cities }, { data: busy }] = await Promise.all([
+  const [{ data: rows, count, error }, { count: total }, { count: online }, { count: toReview }, { count: activeCount }, { data: cities }, { data: busy }] = await Promise.all([
     query,
     supabase.from("couriers").select("user_id", { count: "exact", head: true }),
-    supabase.from("couriers").select("user_id", { count: "exact", head: true }).eq("is_online", true),
+    // Igual que la pestaña "Disponibles": conectados y con cuenta activa (un suspendido no cuenta).
+    supabase.from("couriers").select("user_id", { count: "exact", head: true }).eq("is_online", true).eq("status", "active"),
     supabase.from("couriers").select("user_id", { count: "exact", head: true }).in("status", ["pending", "under_review"]),
+    supabase.from("couriers").select("user_id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("cities").select("id,name").order("name"),
-    supabase.from("orders").select("courier_id").in("status", ["assigned", "picked_up", "on_the_way"]).not("courier_id", "is", null),
+    // Entrega en curso = pedido asignado que no está pendiente de pago, entregado ni cancelado.
+    supabase.from("orders").select("courier_id").in("status", ACTIVE_ORDER_STATUSES).not("courier_id", "is", null),
   ]);
   const busyIds = new Set((busy ?? []).map((o) => o.courier_id));
+
+  // Documentos de los repartidores de esta página (para la columna "Documentos").
+  const pageIds = (rows ?? []).map((r) => r.user_id);
+  const { data: pageDocs } = pageIds.length
+    ? await supabase.from("courier_documents").select("courier_id,doc_type,status,created_at").in("courier_id", pageIds)
+    : { data: [] as (DocRow & { courier_id: string })[] };
+  const docsByCourier = new Map<string, DocRow[]>();
+  for (const d of pageDocs ?? []) docsByCourier.set(d.courier_id, [...(docsByCourier.get(d.courier_id) ?? []), d]);
 
   return (
     <div className="space-y-4">
@@ -72,7 +84,7 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
         <KPI label="Conectados" value={online ?? 0} hint={`de ${total ?? 0} registrados`} icon={Wifi} tone="green" />
         <KPI label="En entrega" value={busyIds.size} hint="repartidores con pedido activo" icon={Bike} tone="blue" />
         <KPI label="Por revisar" value={toReview ?? 0} hint="documentación pendiente" icon={AlertTriangle} tone="yellow" />
-        <KPI label="Activos" value={(total ?? 0) - (toReview ?? 0)} hint="cuentas aprobadas" icon={UserCheck} />
+        <KPI label="Activos" value={activeCount ?? 0} hint="cuentas aprobadas (sin suspendidos)" icon={UserCheck} />
       </div>
 
       <Card className="p-4 space-y-3">
@@ -118,6 +130,17 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
             { key: "v", header: "Vehículo", cell: (r) => <span>{VEHICLE_LABEL[r.vehicle] ?? r.vehicle}{r.plate ? <span className="text-muted text-xs"> · {r.plate}</span> : null}</span> },
             { key: "c", header: "Ciudad", cell: (r) => <span className="text-muted">{r.city?.name ?? "—"}</span> },
             { key: "s", header: "Estado", cell: (r) => <CourierStatusBadge status={r.status} /> },
+            {
+              key: "docs",
+              header: "Documentos",
+              cell: (r) => {
+                const d = docsReadiness(courierRequiredDocs(r.vehicle), docsByCourier.get(r.user_id) ?? []);
+                if (d.ready) return <Badge tone="green">Verificados</Badge>;
+                if (d.rejected.length) return <Badge tone="red">Con rechazos</Badge>;
+                if (d.pending.length) return <Badge tone="yellow">Por revisar</Badge>;
+                return <Badge tone="gray">Incompletos</Badge>;
+              },
+            },
             {
               key: "o",
               header: "Conexión",

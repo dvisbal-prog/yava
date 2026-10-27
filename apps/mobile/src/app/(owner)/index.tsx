@@ -6,12 +6,13 @@ import { colors, formatCOP, formatTime } from "@yava/shared";
 import { Screen, Text, KPI, Card, Chip, Badge, Skeleton, ListRow } from "@/components/ui";
 import { Segmented } from "@/components/merchant/Segmented";
 import { HourlyChart } from "@/components/owner/HourlyChart";
-import { ErrorState, SectionTitle } from "@/components/merchant/Rows";
+import { SectionTitle } from "@/components/merchant/Rows";
+import { OverviewError } from "@/components/owner/OverviewError";
 import { useAdminOverview, useOwnerAlerts } from "@/features/owner/useOwner";
 import { useCities } from "@/features/merchant/useMerchant";
-import { estimatedResult, rangeTitle, RANGE_LABEL } from "@/features/owner/types";
+import { canSeeAlerts, estimatedResult, rangeTitle, RANGE_LABEL } from "@/features/owner/types";
 import type { RangeKey } from "@/features/owner/types";
-import { errorMessage } from "@/lib/errors";
+import { useAuth } from "@/store/auth";
 
 /** Pantalla 98 · Resumen de dirección. */
 export default function OwnerHome() {
@@ -21,21 +22,22 @@ export default function OwnerHome() {
   const { data: cities } = useCities();
   const q = useAdminOverview(range, city);
   const alertsQ = useOwnerAlerts(true);
+  const showAlerts = useAuth((s) => canSeeAlerts(s.adminRole));
   const o = q.data;
   const pendingAlerts = alertsQ.data?.length ?? 0;
 
   return (
-    <Screen refreshing={q.isFetching && !q.isLoading} onRefresh={() => { q.refetch(); alertsQ.refetch(); }}>
+    <Screen refreshing={q.isFetching && !q.isLoading} onRefresh={() => { q.refetch(); if (showAlerts) alertsQ.refetch(); }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingTop: 12, marginBottom: 12 }}>
         <View style={{ flex: 1 }}>
           <Text variant="small" tone="primary" style={{ letterSpacing: 1 }}>YAVA OWNERS</Text>
           <Text variant="title">Resumen</Text>
           <Text variant="caption" tone="muted">{rangeTitle(range)} · Actualizado {formatTime(new Date().toISOString())}</Text>
         </View>
-        <Pressable onPress={() => router.push("/(owner)/alerts")} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+        {showAlerts ? <Pressable onPress={() => router.push("/(owner)/alerts")} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="notifications-outline" size={26} color={colors.carbon} />
           {pendingAlerts ? <View style={{ position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.red, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}><Text variant="small" tone="inverse">{pendingAlerts}</Text></View> : null}
-        </Pressable>
+        </Pressable> : null}
       </View>
       <Segmented value={range} onChange={setRange} items={(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => ({ key: k, label: RANGE_LABEL[k] }))} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
@@ -43,7 +45,7 @@ export default function OwnerHome() {
         {(cities ?? []).map((c) => <Chip key={c.id} label={c.name} selected={city === c.id} onPress={() => setCity(c.id)} />)}
       </ScrollView>
 
-      {q.isError ? <ErrorState message={errorMessage(q.error)} onRetry={() => q.refetch()} /> : q.isLoading || !o ? (
+      {q.isError ? <OverviewError error={q.error} onRetry={() => q.refetch()} /> : q.isLoading || !o ? (
         <View style={{ marginTop: 14 }}><Skeleton height={90} style={{ marginBottom: 8 }} /><Skeleton height={90} style={{ marginBottom: 8 }} /><Skeleton height={160} /></View>
       ) : (
         <>
@@ -71,7 +73,7 @@ export default function OwnerHome() {
           </Card>
 
           {pendingAlerts || o.open_cases ? (
-            <Card style={{ marginTop: 12, borderColor: colors.redSoft, backgroundColor: colors.redSoft }} onPress={() => router.push("/(owner)/alerts")}>
+            <Card style={{ marginTop: 12, borderColor: colors.redSoft, backgroundColor: colors.redSoft }} onPress={showAlerts ? () => router.push("/(owner)/alerts") : undefined}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Ionicons name="warning-outline" size={20} color={colors.red} style={{ marginRight: 10 }} />
                 <Text variant="bodyStrong" style={{ flex: 1 }}>{pendingAlerts ? `${pendingAlerts} ${pendingAlerts === 1 ? "alerta requiere" : "alertas requieren"} atención` : `${o.open_cases} incidencias abiertas`}</Text>
