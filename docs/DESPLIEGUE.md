@@ -55,3 +55,9 @@ eas submit -p ios && eas submit -p android
 
 Google Maps: crear 2 llaves en Google Cloud (Maps SDK for iOS y Maps SDK for Android) restringidas por bundle `co.yava.app`.
 Push: EAS gestiona credenciales APNs y FCM (`eas credentials`). Para Android subir el `google-services.json` de Firebase si se usa FCM v1.
+
+### iOS / TestFlight (27 oct 2026)
+- Equipo Apple `B9X4KJC2K8` (Zoom soluciones digitales). Bundle `co.yava.app` con Push Notifications y Sign In with Apple; certificado de distribución, perfil y llave de push ya guardados en EAS.
+- App en App Store Connect: "YAVA", id `6827716420` (ya está en `eas.json`). Grupo interno de TestFlight "Team (Expo)" con acceso a todos los builds.
+- `eas submit` usa la llave de la App Store Connect API en `tools/asc/AuthKey_H59CTMG8GG.p8`. Ese archivo **no** se sube al repo (está en `.gitignore`): copiarlo a mano en cada máquina que haga envíos. `tools/asc/asc.mjs` es un cliente mínimo de la API para consultar builds y testers.
+- Nuevo build directo a TestFlight: `cd apps/mobile && eas build -p ios --profile production --auto-submit`.

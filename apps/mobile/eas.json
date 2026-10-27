@@ -35,9 +35,12 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "REEMPLAZAR@correo.com",
-        "ascAppId": "REEMPLAZAR",
-        "appleTeamId": "REEMPLAZAR"
+        "appleId": "dvisbal@zds.com.co",
+        "appleTeamId": "B9X4KJC2K8",
+        "ascApiKeyPath": "../../tools/asc/AuthKey_H59CTMG8GG.p8",
+        "ascApiKeyIssuerId": "c269f2b5-9d7d-40ab-9413-431217c4e2c4",
+        "ascApiKeyId": "H59CTMG8GG",
+        "ascAppId": "6827716420"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",

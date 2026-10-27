@@ -16,3 +16,8 @@ supabase/.branches/
 
 # Export web de Expo
 apps/mobile/dist-web/
+
+# Llaves de Apple (App Store Connect)
+*.p8
+tools/asc/*.p8
+tools/asc/last-status.json
