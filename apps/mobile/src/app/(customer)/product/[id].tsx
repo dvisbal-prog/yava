@@ -254,6 +254,8 @@ export default function ProductScreen() {
 
   /* ───────────── 27 · Producto de mercado ───────────── */
   if (kind === "market") {
+    // Lo que se vende al peso va en bolsa: "Banano (1 kg)" → "Bolsa de 1 kg" (27); "Leche (1 L)" sigue "1 L".
+    const marketUnit = nameUnit && /^\d+(?:[.,]\d+)?\s?(?:kg|g|gr|lb)$/i.test(nameUnit) ? `Bolsa de ${nameUnit}` : unitLabel;
     const white = productDesignImage(p.name, "white");
     const onWhite = white !== undefined && white !== productDesignImage(p.name, "default");
     const imgW = width * (376.8 / 393);
@@ -270,8 +272,8 @@ export default function ProductScreen() {
           </View>
           <View style={styles.marketBody}>
             <Text style={styles.marketName}>{shortName}</Text>
-            {unitLabel ? <View style={styles.unitPill}><Text style={styles.unitPillText}>{unitLabel}</Text></View> : null}
-            <Text style={[styles.marketPrice, !unitLabel ? { marginTop: 4 } : null]}>{formatCOP(p.price)}</Text>
+            {marketUnit ? <View style={styles.unitPill}><Text style={styles.unitPillText}>{marketUnit}</Text></View> : null}
+            <Text style={[styles.marketPrice, !marketUnit ? { marginTop: 4 } : null]}>{formatCOP(p.price)}</Text>
             <Text style={styles.marketDesc}>{p.description || (m?.name ? `Producto fresco de ${m.name}.` : "")}</Text>
             {unavailableBlock}
             {available ? (

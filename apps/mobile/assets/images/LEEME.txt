@@ -1,3 +1,4 @@
 Logo aprobado: YAVA/reinicio-v2/logo-aprobado.png.
 logo-horizontal.png (transparente), splash-icon.png (fondo blanco), icon.png y android-icon-foreground.png (Y sobre amarillo #FECB14), logo-mark.png y favicon.png (símbolo con fondo transparente) se generaron desde ese archivo.
 auth-hero.jpg: foto de la pantalla 02 (tanda-01/02-acceso.png).
+splash-logo-ios.png: logo-horizontal.png llevado a 1138 × 318 px (229 × 64 pt, como lo dibuja la Apertura 01) con 68 px (13,6 pt) transparentes debajo; es la imagen del splash de iOS (app.json, imageWidth 229) para que el logo quede del mismo tamaño y en el mismo lugar que en la Apertura.

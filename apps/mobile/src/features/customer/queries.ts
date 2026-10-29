@@ -152,7 +152,8 @@ export function useProductsOfMerchants(merchantIds: string[], limit = 12) {
     enabled: merchantIds.length > 0,
     queryFn: async (): Promise<MerchantsProducts> => {
       const [prods, cats] = await Promise.all([
-        supabase.from("products").select("*").in("merchant_id", merchantIds).eq("status", "published").order("sort").limit(limit),
+        // Desempate por nombre: varios comercios repiten `sort` y sin él el orden (y el corte del limit) sería al azar.
+        supabase.from("products").select("*").in("merchant_id", merchantIds).eq("status", "published").order("sort").order("name").limit(limit),
         supabase.from("product_categories").select("*").in("merchant_id", merchantIds).order("sort"),
       ]);
       throwIf(prods.error); throwIf(cats.error);
@@ -220,7 +221,8 @@ export function useFavoriteIds() {
     queryKey: ["favorites", uid],
     enabled: Boolean(uid),
     queryFn: async (): Promise<string[]> => {
-      const { data, error } = await supabase.from("favorites").select("merchant_id").eq("user_id", uid as string);
+      // En el orden en que se guardaron (el primero arriba en 34).
+      const { data, error } = await supabase.from("favorites").select("merchant_id").eq("user_id", uid as string).order("created_at");
       throwIf(error);
       return ((data ?? []) as { merchant_id: string }[]).map((f) => f.merchant_id);
     },

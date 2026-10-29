@@ -38,17 +38,21 @@ Las fachadas de farmacia tenían encima la insignia "30–40 min". No se retocar
 | comercio-amaras-tarjeta.jpg | 370×215 | 34 · (47,999,417,1214) | Shawarma entero | 34; 41; 08; 36 | Amaras (alternativa) |
 | logo-bocamar.png | 113×98 | 12 · (52,490,165,588) | Logo de olas en color sólido #004796, fondo transparente | 12: va en una baldosa de fondo **#FDF7EC** de 125×110 px (58×51 pt) | Bocamar (logo) |
 | logo-bocamar-sello.png | 175×175 | 10 · (56,1300,231,1475) | Pez y palabra BOCAMAR en #063D75, fondo transparente | 10: va en un círculo blanco de 174 px (80 pt) sobre la portada | Bocamar (logo alternativo) |
-| comercio-mercado-del-puerto-portada.jpg | 851×348 | 26 · (0,0,851,348) | Bolsa de mercado: lechuga, banano, tomate y leche (retocada) | 26 portada de la tienda | Mercado La Costa (portada de la pantalla de tienda) |
-| logo-mercado-del-puerto.jpg | 174×175 | 26 · (43,391,217,566) | Bolsa de mercado sobre menta | 26: baldosa del logo, fondo **#D9F3E8** de 192×193 px | **Mercado La Costa** (logo) |
-| fachada-mercado-del-puerto.jpg | 381×220 | 25 · (46,946,427,1166) | Fachada con el letrero "Mercado del Puerto" | 25 "Tiendas cercanas" | — (alternativa) |
-| fachada-tienda-de-la-costa.jpg | 379×220 | 25 · (457,946,836,1166) | Fachada con el letrero "Tienda de la Costa" | 25 "Tiendas cercanas" | **Mercado La Costa** (portada) |
-| fachada-farmacia-del-puerto.jpg | 370×193 | 29 · (46,911,416,1104) | Fachada con el letrero "Farmacia del Puerto" | 29 "Farmacias cercanas" | **Farmacia Vida** (portada) |
-| fachada-bienestar-caribe.jpg | 370×193 | 29 · (449,911,819,1104) | Fachada con el letrero "Bienestar Caribe" | 29 "Farmacias cercanas" | — (alternativa) |
+| comercio-mercado-del-puerto-portada.jpg | 851×348 | 26 · (0,0,851,348) | Bolsa de mercado: lechuga, banano, tomate y leche (retocada) | 26 portada de la tienda | **Mercado del Puerto** (portada de la pantalla de tienda) |
+| logo-mercado-del-puerto.jpg | 174×175 | 26 · (43,391,217,566) | Bolsa de mercado sobre menta | 26: baldosa del logo, fondo **#D9F3E8** de 192×193 px | **Mercado del Puerto** (logo) |
+| fachada-mercado-del-puerto.jpg | 381×220 | 25 · (46,946,427,1166) | Fachada con el letrero "Mercado del Puerto" | 25 "Tiendas cercanas" | **Mercado del Puerto** (fachada y tarjetas) |
+| fachada-tienda-de-la-costa.jpg | 379×220 | 25 · (457,946,836,1166) | Fachada con el letrero "Tienda de la Costa" | 25 "Tiendas cercanas" | **Tienda de la Costa** (portada, fachada y tarjetas) |
+| fachada-farmacia-del-puerto.jpg | 370×193 | 29 · (46,911,416,1104) | Fachada con el letrero "Farmacia del Puerto" | 29 "Farmacias cercanas" | **Farmacia del Puerto** (portada) |
+| fachada-bienestar-caribe.jpg | 370×193 | 29 · (449,911,819,1104) | Fachada con el letrero "Bienestar Caribe" | 29 "Farmacias cercanas" | **Bienestar Caribe** (portada) |
 
-Los nombres del seed no coinciden con los de los diseños:
+Desde el 29 oct 2026 los comercios de demostración se llaman como en los diseños (antes eran "Mercado La Costa" y "Farmacia Vida"):
 
-- **Mercado La Costa**: en los diseños la tienda se llama "Mercado del Puerto". Para la portada se eligió la fachada "Tienda de la Costa", porque su letrero es el más parecido al nombre del seed. El logo es la baldosa de la bolsa, que no lleva texto. La pantalla de tienda (26) puede usar `comercio-mercado-del-puerto-portada.jpg` como portada.
-- **Farmacia Vida**: ningún diseño tiene una farmacia con ese nombre. Se usa la fachada "Farmacia del Puerto", que es la farmacia de la pantalla 30.
+- **Mercado del Puerto** (mercado): tienda principal de 25/26/27/28. Fachada `fachada-mercado-del-puerto.jpg` en "Tiendas cercanas", portada `comercio-mercado-del-puerto-portada.jpg` en la tienda (26), logo de la bolsa (sin texto) y la foto del banner de 25 como tarjeta de oferta (33).
+- **Tienda de la Costa** (mercado): segunda tarjeta de 25 "Tiendas cercanas". Usa su fachada en todo (portada, tarjeta y banda); no tiene logo de diseño.
+- **Farmacia del Puerto** (farmacia): primera tarjeta de 29 "Farmacias cercanas" y vendedora del producto de 30.
+- **Bienestar Caribe** (farmacia): segunda tarjeta de 29.
+
+`merchantImage()` los busca por nombre normalizado ("mercado del puerto", "tienda de la costa", "farmacia del puerto", "bienestar caribe"); los nombres viejos ya no tienen recorte.
 
 ## Productos
 
@@ -62,26 +66,26 @@ Los nombres del seed no coinciden con los de los diseños:
 | producto-limonada-coco.jpg | 172×229 | 14 · (593,346,765,575) | Limonada de coco con coco partido (pierde 15 px del borde derecho del vaso) | 14 Bebidas; 44 sugerencia | **Limonada de coco** |
 | producto-patacones.jpg | 293×197 | 14 · (49,765,342,962) | Patacones con guacamole | 14 Acompañantes; 15 "Te puede gustar" | **Patacones Bocamar** |
 | producto-chips-platano.jpg | 292×197 | 14 · (442,765,734,962) | Chips de plátano en bowl de madera | 14; 15 | **Chips de plátano Bocamar** |
-| producto-banano.jpg | 361×283 | 26 · (45,742,406,1025) | Banano sobre mármol | 26 cuadrícula; 28 canasta | **Banano (libra)** |
-| producto-tomate.jpg | 362×283 | 26 · (445,742,807,1025) | Tomates sobre madera | 26; 28 | **Tomate (libra)** |
-| producto-banano-canasta.jpg | 221×187 | 28 · (47,226,268,413) | Racimo de banano sobre madera oscura | 28 línea de la canasta de mercado (103 × 87 pt) | **Banano (libra)** (`productoBananoCanasta`) |
-| producto-tomate-canasta.jpg | 221×187 | 28 · (47,455,268,642) | Tomates sobre madera | 28 línea de la canasta de mercado | **Tomate (libra)** (`productoTomateCanasta`) |
-| producto-arroz.jpg | 362×300 | 26 · (44,1242,406,1542) | Arroz en bowl de madera | 26; 25 "Lo esencial" | **Arroz Diana 1 kg** |
-| producto-protector-solar.jpg | 796×817 | 30 · (28,102,824,919) | Frasco de protector SPF 50 con toalla y palma | 30 portada | **Protector solar FPS 50** |
-| producto-banano-blanco.jpg | 815×730 | 27 · (20,95,835,825) | Racimo de banano sobre fondo blanco | 27 detalle; 25 "Lo esencial" | Banano (libra), versión de fondo blanco |
-| producto-protector-solar-blanco.jpg | 236×214 | 29 · (50,1412,286,1626) | Tubo SPF 50 sobre blanco | 29 "Productos destacados" | Protector solar FPS 50, versión de fondo blanco |
-| producto-agua.jpg | 170×229 | 14 · (324,346,494,575) | Botella de agua | 14 Bebidas; 44 | — (no está en el seed) |
-| producto-leche.jpg | 362×299 | 26 · (445,1242,807,1541) | Botella y vaso de leche | 26 | — (no está en el seed) |
-| producto-cepillo-dental.jpg | 224×214 | 29 · (322,1412,546,1626) | Dos cepillos de dientes sobre blanco | 29 | — (no está en el seed) |
-| producto-apositos.jpg | 241×214 | 29 · (580,1412,821,1626) | Caja de curitas sobre blanco | 29 | — (no está en el seed) |
+| producto-banano.jpg | 361×283 | 26 · (45,742,406,1025) | Banano sobre mármol | 26 cuadrícula; 28 canasta | **Banano (1 kg)** |
+| producto-tomate.jpg | 362×283 | 26 · (445,742,807,1025) | Tomates sobre madera | 26; 28 | **Tomate (1 kg)** |
+| producto-banano-canasta.jpg | 221×187 | 28 · (47,226,268,413) | Racimo de banano sobre madera oscura | 28 línea de la canasta de mercado (103 × 87 pt) | **Banano (1 kg)** (`productoBananoCanasta`) |
+| producto-tomate-canasta.jpg | 221×187 | 28 · (47,455,268,642) | Tomates sobre madera | 28 línea de la canasta de mercado | **Tomate (1 kg)** (`productoTomateCanasta`) |
+| producto-arroz.jpg | 362×300 | 26 · (44,1242,406,1542) | Arroz en bowl de madera | 26; 25 "Lo esencial" | **Arroz (1 kg)** |
+| producto-protector-solar.jpg | 796×817 | 30 · (28,102,824,919) | Frasco de protector SPF 50 con toalla y palma | 30 portada | **Protector solar SPF 50** |
+| producto-banano-blanco.jpg | 815×730 | 27 · (20,95,835,825) | Racimo de banano sobre fondo blanco | 27 detalle; 25 "Lo esencial" | Banano (1 kg), versión de fondo blanco |
+| producto-protector-solar-blanco.jpg | 236×214 | 29 · (50,1412,286,1626) | Tubo SPF 50 sobre blanco | 29 "Productos destacados" | Protector solar SPF 50, versión de fondo blanco |
+| producto-agua.jpg | 170×229 | 14 · (324,346,494,575) | Botella de agua | 14 Bebidas; 44 | **Agua** (Bocamar) |
+| producto-leche.jpg | 362×299 | 26 · (445,1242,807,1541) | Botella y vaso de leche | 26 | **Leche (1 L)** (en los dos mercados) |
+| producto-cepillo-dental.jpg | 224×214 | 29 · (322,1412,546,1626) | Dos cepillos de dientes sobre blanco | 29 | **Cepillo dental** |
+| producto-apositos.jpg | 241×214 | 29 · (580,1412,821,1626) | Caja de curitas sobre blanco | 29 | **Apósitos adhesivos** |
 
 ### Productos del seed sin foto en ningún diseño
 
 No aparecen como producto en las pantallas 01–48, así que no se les asignó ninguna imagen. Quedan con su foto actual:
 
-- **Naranmiche**: Clásica Naranmiche, Doble tocineta, Papas a la francesa y Gaseosa 400 ml. La hamburguesa solo sale como portada del comercio, como ícono de categoría y en la oferta "Combo hamburguesa + papas".
-- **Amaras**: Shawarma de pollo, Shawarma mixto y Falafel. El shawarma solo sale como portada y en la oferta de Amaras.
-- **Mercado**: Mango Tommy (unidad), Cebolla cabezona (libra) y Aceite Premier 1 L. El aceite solo aparece dentro de la foto de la categoría Despensa.
+- **Naranmiche**: Clásica Naranmiche, Doble tocineta, Papas a la francesa, Gaseosa 400 ml y Combo hamburguesa + papas (nuevo, 29 oct 2026). La hamburguesa solo sale como portada del comercio, como ícono de categoría y en la oferta "Combo hamburguesa + papas".
+- **Amaras**: Shawarma de pollo, Shawarma mixto, Falafel y Limonada de hierbabuena (nueva, 29 oct 2026). El shawarma solo sale como portada y en la oferta de Amaras.
+- **Mercado**: Mango Tommy (unidad), Cebolla cabezona (1 kg) y Aceite Premier 1 L. El aceite solo aparece dentro de la foto de la categoría Despensa.
 - **Farmacia**: Acetaminofén 500 mg x 10, Ibuprofeno 400 mg x 10 y Alcohol antiséptico 350 ml.
 - **Comercio** Arepas Doña Rosa (solicitud pendiente): no aparece en los diseños.
 
@@ -145,8 +149,10 @@ Cuando la imagen va sobre una baldosa de color, el fondo indicado es el color qu
     "Bocamar": { "cover": "comercio-bocamar-portada.jpg", "logo": "logo-bocamar.png" },
     "Naranmiche": { "cover": "comercio-naranmiche.jpg", "logo": null },
     "Amaras": { "cover": "comercio-amaras.jpg", "logo": null },
-    "Mercado La Costa": { "cover": "fachada-tienda-de-la-costa.jpg", "logo": "logo-mercado-del-puerto.jpg" },
-    "Farmacia Vida": { "cover": "fachada-farmacia-del-puerto.jpg", "logo": null }
+    "Mercado del Puerto": { "cover": "comercio-mercado-del-puerto-portada.jpg", "storefront": "fachada-mercado-del-puerto.jpg", "logo": "logo-mercado-del-puerto.jpg" },
+    "Tienda de la Costa": { "cover": "fachada-tienda-de-la-costa.jpg", "logo": null },
+    "Farmacia del Puerto": { "cover": "fachada-farmacia-del-puerto.jpg", "logo": null },
+    "Bienestar Caribe": { "cover": "fachada-bienestar-caribe.jpg", "logo": null }
   },
   "products": {
     "Ceviche clásico": "producto-ceviche-clasico.jpg",
@@ -156,10 +162,14 @@ Cuando la imagen va sobre una baldosa de color, el fondo indicado es el color qu
     "Chips de plátano Bocamar": "producto-chips-platano.jpg",
     "Limonada natural": "producto-limonada-natural.jpg",
     "Limonada de coco": "producto-limonada-coco.jpg",
-    "Banano (libra)": "producto-banano.jpg",
-    "Tomate (libra)": "producto-tomate.jpg",
-    "Arroz Diana 1 kg": "producto-arroz.jpg",
-    "Protector solar FPS 50": "producto-protector-solar.jpg"
+    "Agua": "producto-agua.jpg",
+    "Banano (1 kg)": "producto-banano.jpg",
+    "Tomate (1 kg)": "producto-tomate.jpg",
+    "Arroz (1 kg)": "producto-arroz.jpg",
+    "Leche (1 L)": "producto-leche.jpg",
+    "Protector solar SPF 50": "producto-protector-solar.jpg",
+    "Cepillo dental": "producto-cepillo-dental.jpg",
+    "Apósitos adhesivos": "producto-apositos.jpg"
   },
   "static": {
     "acceso-hero": "acceso-comida.jpg",

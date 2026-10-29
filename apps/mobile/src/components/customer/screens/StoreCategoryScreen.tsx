@@ -15,7 +15,7 @@ import { CategoryTiles, type TileItem } from "@/components/customer/browse/Categ
 import {
   BrowseSection, MarketBanner, StoreCard, EssentialCard, PharmacyCategoryCard, PharmacyCard, FeaturedProductCard, splitUnit, type PharmacyCategory,
 } from "@/components/customer/browse/StoreBrowse";
-import { productImage, productDesignImage } from "@/lib/design-images";
+import { productImage, productDesignImage, normalizeName } from "@/lib/design-images";
 import { useNearbyMerchants, useProductsOfMerchants, useFavoriteIds, useToggleFavorite, useRequireAuth } from "@/features/customer";
 import type { ProductRow as ProductRowData, ProductCategoryRow, NearbyMerchant } from "@/features/customer";
 import { confirm } from "@/lib/dialog";
@@ -70,13 +70,32 @@ export function StoreCategoryScreen({ config, notice, searchPlaceholder }: { con
   const addLine = useCart((s) => s.addLine);
   const replaceWith = useCart((s) => s.replaceWith);
   const [chip, setChip] = React.useState<string | null>(null);
+  const cartMerchantId = useCart((s) => (s.lines.length ? s.merchant?.id : undefined));
 
+  /**
+   * "Lo esencial" (25) / "Productos destacados" (29) juntan las tiendas cercanas: primero los productos de la tienda
+   * más cercana (en el orden de `nearby_merchants`), cada tienda con su orden del menú, y sin repetir un producto
+   * que ofrecen varias tiendas ("Leche (1 L)" sale una vez, en el lugar de la tienda más cercana). De las copias se
+   * muestra la que se puede comprar (con stock y la tienda abierta), luego la de la tienda de la canasta y luego la
+   * de la tienda más cercana: "Aceite Premier 1 L" agotado en Mercado del Puerto sale de Tienda de la Costa.
+   * Con una categoría elegida se filtra antes de juntar, para no perder una copia que solo esa tienda clasifica así.
+   */
   const filteredProducts = useMemo(() => {
-    const list = products.data?.products ?? [];
-    if (!chip) return list.slice(0, ESSENTIALS_SHOWN);
-    const catIds = categoryIdsForChip(chip, products.data?.categories ?? []);
-    return list.filter((p) => p.category_id != null && catIds.has(p.category_id)).slice(0, ESSENTIALS_SHOWN);
-  }, [products.data, chip]);
+    const storeRank = new Map(ids.map((id, i) => [id, i]));
+    const rank = (p: ProductRowData) => storeRank.get(p.merchant_id) ?? Number.MAX_SAFE_INTEGER;
+    const open = new Set((merchants.data ?? []).filter((m) => m.is_open).map((m) => m.id));
+    const score = (p: ProductRowData) => (isProductAvailable(p) && open.has(p.merchant_id) ? 0 : 2) + (p.merchant_id === cartMerchantId ? 0 : 1);
+    const catIds = chip ? categoryIdsForChip(chip, products.data?.categories ?? []) : null;
+    const best = new Map<string, ProductRowData>();
+    for (const p of [...(products.data?.products ?? [])].sort((a, b) => rank(a) - rank(b))) {
+      if (catIds && (p.category_id == null || !catIds.has(p.category_id))) continue;
+      const key = normalizeName(p.name);
+      const cur = best.get(key);
+      // El Map conserva el lugar de la primera copia (la de la tienda más cercana) aunque se cambie por otra.
+      if (!cur || score(p) < score(cur)) best.set(key, p);
+    }
+    return [...best.values()].slice(0, ESSENTIALS_SHOWN);
+  }, [products.data, merchants.data, cartMerchantId, chip, ids]);
 
   function addDirect(p: ProductRowData, m: NearbyMerchant) {
     const merchant = { id: m.id, name: m.name, delivery_fee: m.delivery_fee, category: m.category, prep_min: m.prep_min, prep_max: m.prep_max };

@@ -16,6 +16,10 @@ const TABS: { value: Tab; label: string }[] = [{ value: "merchants", label: "Res
 /** Cuántos restaurantes y productos se ven en la pestaña "Restaurantes" antes de "Ver todos". */
 const MERCHANTS_PREVIEW = 3;
 const PRODUCTS_PREVIEW = 1;
+/** "Tus productos favoritos": productos de los primeros comercios guardados (se piden de sobra y se ordenan aquí). */
+const PRODUCT_MERCHANTS = 5;
+const PRODUCTS_FETCH = 60;
+const PRODUCTS_SHOWN = 10;
 
 /**
  * Pantalla 34 · Favoritos (tanda-05/34-favoritos.png): encabezado con dirección + bolsa, buscador, pestañas
@@ -29,17 +33,27 @@ export default function Favorites() {
   const session = useAuth((s) => s.session);
   const favIds = useFavoriteIds();
   const merchants = useMerchantsByIds(favIds.data ?? []);
-  const products = useProductsOfMerchants(favIds.data ?? [], 10);
+  const productMerchantIds = useMemo(() => (favIds.data ?? []).slice(0, PRODUCT_MERCHANTS), [favIds.data]);
+  const products = useProductsOfMerchants(productMerchantIds, PRODUCTS_FETCH);
   const toggle = useToggleFavorite();
   const [tab, setTab] = useState<Tab>("merchants");
   const [allMerchants, setAllMerchants] = useState(false);
 
+  /** Posición de cada comercio en favoritos (orden en que se guardaron): ordena restaurantes y productos. */
+  const rank = useMemo(() => {
+    const pos = new Map((favIds.data ?? []).map((id, i) => [id, i]));
+    return (id: string | null | undefined) => pos.get(id ?? "") ?? Number.MAX_SAFE_INTEGER;
+  }, [favIds.data]);
   const rows = useMemo<MerchantCardData[]>(() => (merchants.data ?? []).map((m) => ({
     id: m.id ?? "", name: m.name ?? "", slug: m.slug, tagline: m.tagline, logo_url: m.logo_url, cover_url: m.cover_url, delivery_fee: m.delivery_fee ?? 0,
     prep_min: m.prep_min ?? 0, prep_max: m.prep_max ?? 0, rating_avg: Number(m.rating_avg ?? 0), rating_count: m.rating_count ?? 0, is_open: Boolean(m.is_open),
-  })), [merchants.data]);
+  })).sort((a, b) => rank(a.id) - rank(b.id)), [merchants.data, rank]);
   const merchantName = (id: string | null) => rows.find((m) => m.id === id)?.name;
-  const productList = products.data?.products ?? [];
+  // Productos: primero los del comercio guardado primero; dentro de cada comercio, orden del menú y nombre
+  // (con los datos demo, "Ceviche clásico" de Bocamar encabeza "Tus productos favoritos"). Se ordena y se corta aquí:
+  // el servidor corta por `sort` mezclando comercios y podría dejar fuera los del primero.
+  const productList = useMemo(() => [...(products.data?.products ?? [])].sort((a, b) =>
+    rank(a.merchant_id) - rank(b.merchant_id) || a.sort - b.sort || a.name.localeCompare(b.name, "es")).slice(0, PRODUCTS_SHOWN), [products.data, rank]);
 
   const openMerchant = (id: string) => router.push(`/(customer)/merchant/${id}` as never);
   const openProduct = (id: string) => router.push(`/(customer)/product/${id}` as never);

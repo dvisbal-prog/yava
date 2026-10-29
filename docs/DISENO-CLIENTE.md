@@ -37,7 +37,8 @@ En web las rutas **no llevan el grupo**: `(customer)/merchant/[id].tsx` → `/me
 - **S-CART** (pedido de ejemplo #1042: ceviche + limonada en Bocamar):
   `--storage 'yava-cart={"state":{"merchant":{"id":"c0000000-0000-0000-0000-000000000001","name":"Bocamar","delivery_fee":3000,"category":"food","prep_min":25,"prep_max":35},"lines":[{"product_id":"e0000000-0000-0000-0000-000000000001","name":"Ceviche clásico","unit_price":28000,"qty":1,"options":[{"group_id":"f0000000-0000-0000-0000-000000000001","option_id":"demo-sin-picante","name":"Sin picante","price_delta":0}]},{"product_id":"e0000000-0000-0000-0000-000000000006","name":"Limonada natural","unit_price":6000,"qty":1,"options":[]}],"notes":"","couponCode":null},"version":0}'`
   (el `option_id` es ilustrativo: sirve para capturas, no para pagar).
-- **S-CART-NODISP** (pantalla 44): igual que S-CART pero la segunda línea es `"product_id":"e0000000-0000-0000-0000-000000000007","name":"Limonada de coco","unit_price":9000` (producto en estado `paused` en la BD → sale "No disponible").
+- **S-CART-NODISP** (pantalla 44, actualizado el 29 oct 2026): desde que "Limonada de coco" está publicada (la pide el PNG 14), en la BD no queda ningún producto de Bocamar en pausa. Se usa S-CART y se simula, solo en la respuesta, que Limonada natural está en pausa (no escribe en la BD):
+  `--storage "$SCART" --patch '000000000006%29=limonada-natural.jpg"],"status":"published"=>limonada-natural.jpg"],"status":"paused"'` (con `yshotG.mjs`).
 - **S-LOC-FUERA** (pantalla 46): S-LOC cambiando `lat/lng` a `4.711/-74.072` (Bogotá, fuera de cobertura).
 
 ### 0.2 IDs reales de los datos demo (Supabase `dgebycmouxjfuwtnhxmu`, iguales a `supabase/seed/seed.sql`)
@@ -47,16 +48,26 @@ En web las rutas **no llevan el grupo**: `(customer)/merchant/[id].tsx` → `/me
 | Bocamar (food, ceviches) | `c0000000-0000-0000-0000-000000000001` |
 | Naranmiche (food, hamburguesas) | `c0000000-0000-0000-0000-000000000002` |
 | Amaras (food, shawarmas) | `c0000000-0000-0000-0000-000000000003` |
-| Mercado La Costa (market) | `c0000000-0000-0000-0000-000000000004` (en el diseño se llama "Mercado del Puerto") |
-| Farmacia Vida (pharmacy) | `c0000000-0000-0000-0000-000000000005` (en el diseño "Farmacia del Puerto") |
-| Ceviche clásico (con grupo "Nivel de picante" obligatorio + "Complementos") | `e0000000-0000-0000-0000-000000000001` |
+| Mercado del Puerto (market) | `c0000000-0000-0000-0000-000000000004` (antes "Mercado La Costa") |
+| Tienda de la Costa (market) | `c0000000-0000-0000-0000-000000000007` (segunda tienda de 25) |
+| Farmacia del Puerto (pharmacy) | `c0000000-0000-0000-0000-000000000005` (antes "Farmacia Vida") |
+| Bienestar Caribe (pharmacy) | `c0000000-0000-0000-0000-000000000008` (segunda farmacia de 29) |
+| Ceviche clásico (con grupo "Elige el picante" obligatorio + "Complementos") | `e0000000-0000-0000-0000-000000000001` |
 | Ceviche de camarón / mixto | `…000000000002` / `…000000000003` |
 | Patacones / Chips de plátano | `…000000000004` / `…000000000005` |
-| Limonada natural / Limonada de coco (**paused**) | `…000000000006` / `…000000000007` |
-| Productos de mercado y farmacia | IDs aleatorios: llegar con `--click "Banano (libra)"` o `--click "Protector solar FPS 50"` desde la tienda; el JSON de yshot devuelve la URL `/product/<id>` |
+| Limonada natural / Agua / Limonada de coco (las tres publicadas) | `…000000000006` / `…000000000008` / `…000000000007` |
+| Productos de mercado y farmacia | IDs aleatorios: llegar con `--click "Banano (1 kg)"` o `--click "Protector solar SPF 50"` desde la tienda; el JSON de yshot devuelve la URL `/product/<id>` |
 | Pedido #1042 (entregado, pagado con Visa 4242) | `90000000-0000-0000-0000-000000001042` |
 | Dirección Casa de María | `b0000000-0000-0000-0000-000000000001` |
 | Cliente demo | `cliente@yava.app` / `yava2026` (perfil "María Pérez") |
+
+Datos demo alineados con los diseños (29 oct 2026):
+- **Mercado**: "Mercado del Puerto" y "Tienda de la Costa". Productos "Banano (1 kg)", "Tomate (1 kg)", "Cebolla cabezona (1 kg)", "Arroz (1 kg)" y "Leche (1 L)" (en las dos tiendas). Las unidades ya no dicen "libra".
+- **Farmacia**: "Farmacia del Puerto" y "Bienestar Caribe". Productos nuevos o renombrados: "Protector solar SPF 50", "Cepillo dental" y "Apósitos adhesivos".
+- **Restaurantes**: Bocamar suma "Agua" y las etiquetas {ceviche, mariscos, comida de mar} (subtítulo "Ceviches · Mariscos · Comida de mar"); su categoría de acompañantes se llama "Acompañantes", como en 12 y 14. Naranmiche suma "Combo hamburguesa + papas"; Amaras suma "Limonada de hierbabuena". El grupo de picante del ceviche se llama "Elige el picante".
+- **María**: Bocamar, Naranmiche y Amaras en favoritos; 3 notificaciones de #1042; un caso de soporte de #1042 ("pago · Revisar un cobro") abierto 1 min después de la entrega, con 3 mensajes a +2, +3 y +4 min. Todos los pedidos tienen líneas.
+- **Orden fijo**: `search_catalog` ordena sus resultados (migración `0014_search_catalog_orden.sql`) y las listas que mezclan comercios desempatan por nombre, así que lo que se ve ya no depende del orden físico de las filas.
+- **Fotos**: `design-images.ts` y `cart/photos.ts` buscan por el nombre nuevo normalizado ("banano 1 kg", "leche 1 l", "tienda de la costa"…). Los nombres viejos ya no tienen recorte (ver FOTOS-DISENO.md).
 
 Pantallas que **no se pueden alcanzar** con los datos demo sin tocar la BD: 21 (no hay pedido en camino), 45 (el #1042 está pagado), 47 en su estado "cancelable" (el #1042 ya se entregó), 43 (solo si Bocamar está fuera de horario), 48 (requiere estar sin red). Para compararlas, usar un fixture local solo en `__DEV__` (p. ej. un parámetro `?preview=1` que inyecte un pedido de ejemplo) — decisión del orquestador; **nunca** escribir en la BD.
 
@@ -404,10 +415,12 @@ Formato: **PNG** · **Archivo actual** · **Web** (ruta + estado) · **Elementos
 
 ### 01 · Apertura
 - **PNG**: `tanda-01/01-apertura.png`
-- **Archivo**: splash nativo (`app.json` → `expo-splash-screen`, `assets/images/splash-icon.png`, `imageWidth: 200`). No hay ruta.
+- **Archivo**: splash nativo (`app.json` → `expo-splash-screen`) y luego `src/components/customer/auth/Apertura.tsx` mientras carga la sesión. No hay ruta.
+  - **iOS**: `assets/images/splash-logo-ios.png` con `imageWidth: 229` sobre blanco. Es el logo horizontal a 229 × 64 pt (como lo dibuja la Apertura) con 13,6 pt transparentes debajo, así que queda centrado 6,8 pt por encima de la mitad, igual que la Apertura.
+  - **Android**: sigue con `assets/images/splash-icon.png` e `imageWidth: 200` (en Android 12+ el ícono del splash va dentro de una máscara que recorta las imágenes anchas).
 - **Web**: no aplica (comparar solo el logo).
 - **Elementos**: fondo blanco; logo horizontal aprobado centrado (x 82–311 pt, **229 pt de ancho**, 63 pt de alto, centro vertical ≈ 50 % de la pantalla). Nada más.
-- **Ojo**: subir `imageWidth` a ≈ 230.
+- **Ojo**: hecho en iOS el 29 oct 2026; se verá en el próximo build nativo (el splash no viaja por OTA). El splash y la Apertura dibujan el logo con el mismo tamaño (229 × 64 pt) y en la misma posición, así que no hay salto visible al pasar de uno a otro. `splash-logo-ios.png` debe ir en el mismo commit que `app.json`: sin él falla el prebuild de iOS.
 
 ### 02 · Acceso y registro
 - **PNG**: `tanda-01/02-acceso.png` · **Archivo**: `app/(auth)/login.tsx` · **Web**: `/login --login ninguno`
@@ -646,7 +659,7 @@ Formato: **PNG** · **Archivo actual** · **Web** (ruta + estado) · **Elementos
 - **Ojo**: hoy es lista con fotos a la derecha y chips sueltos (ver captura `guia26`); el diseño es grid de tarjetas.
 
 ### 27 · Producto de mercado
-- **PNG**: `tanda-04/27-mercado-producto.png` · **Archivo**: `app/(customer)/product/[id].tsx` · **Web**: `/merchant/c0000000-0000-0000-0000-000000000004 --click "Banano (libra)"`
+- **PNG**: `tanda-04/27-mercado-producto.png` · **Archivo**: `app/(customer)/product/[id].tsx` · **Web**: `/merchant/c0000000-0000-0000-0000-000000000004 --click "Banano (1 kg)"`
 - **Elementos**: `close` en círculo blanco 40 pt (`shadowSoft`) arriba-izquierda; foto del producto **sobre fondo blanco, sin marco** (`producto-banano-blanco.jpg`, ≈ 376 × 315 pt, y 18 → 333); y 362 "Banano" `display` 34 pt; píldora "Bolsa de 1 kg" `#F1F2F5` 104 × 28 pt radio 12 (15,5 pt gris); "$4.000" 29 pt 700; "Producto fresco de Mercado del Puerto." 15,5 pt gris; separador; "Si no está disponible" 20 pt 700; radios "Reemplazar por similar" ✓ / "Quitar del pedido" (16 pt); nota "Te contactaremos si cambia el precio." 14 pt `textPlaceholder`; barra C16b con stepper relleno C14b (145 × 52) + "Agregar · $4.000" (211 × 52).
 
 ### 28 · Canasta de mercado
@@ -666,7 +679,7 @@ Formato: **PNG** · **Archivo actual** · **Web** (ruta + estado) · **Elementos
 - **Ojo**: el diseño no muestra el aviso de "Medicamentos de venta libre" ni chips de texto; si el aviso es obligatorio, va como nota pequeña al final.
 
 ### 30 · Producto de farmacia
-- **PNG**: `tanda-04/30-farmacia-producto.png` · **Archivo**: `app/(customer)/product/[id].tsx` · **Web**: `/merchant/c0000000-0000-0000-0000-000000000005 --click "Protector solar FPS 50"`
+- **PNG**: `tanda-04/30-farmacia-producto.png` · **Archivo**: `app/(customer)/product/[id].tsx` · **Web**: `/merchant/c0000000-0000-0000-0000-000000000005 --click "Protector solar SPF 50"`
 - **Elementos**: tarjeta-imagen 379 × 388 pt radio 24 en x 7 (y 3), con atrás (42 pt), compartir y corazón dentro; puntos del carrusel (activo `blue` 6 pt, inactivos `#E1E4EA`) en y 405; "Protector solar SPF50" 24 pt 700; "80 ml" 15 pt gris; "$35.000" 22 pt 700; tarjeta de farmacia `blueTint` 362 × 55 pt radio 16 (`storefront` relleno `blue` 24, "Farmacia del Puerto" 16 pt 600, "Salud y bienestar" 14,5 pt gris, chevron); filas C17d "Descripción", "Modo de uso", "Ingredientes"; nota "Consulta las indicaciones del empaque." 13 pt gris; barra C16b (stepper C14a 122 × 39 + "Agregar · $35.000" 236 pt).
 - **Fotos**: `producto-protector-solar.jpg`.
 
@@ -915,8 +928,8 @@ import { designImages, merchantImage, productImage, promoImage, merchantDesignIm
 ```
 
 - `designImages` tiene una clave camelCase por archivo de `assets/images/diseno/` (ver docs/FOTOS-DISENO.md): `categoriaComida`, `tileCeviches`, `bocamarTarjeta`, `productoCevicheClasicoDetalle`, `vacioCanasta`, `pagoVisa`, `avatarRepartidor`…
-- `merchantImage(m, kind)` busca por nombre o slug normalizado (sin tildes): Bocamar, Naranmiche, Amaras, Mercado La Costa (= "Mercado del Puerto"), Farmacia Vida (= "Farmacia del Puerto"), Bienestar Caribe; si el tipo no existe cae al más parecido y, si el comercio no está en el mapa, a `cover_url`/`logo_url` de la BD.
-- `productImage(p, variant)` busca por nombre (`"Ceviche clásico"`, `"Banano (libra)"`, `"Protector solar FPS 50"`…) y cae a `image_urls[0]`/`image_url`.
+- `merchantImage(m, kind)` busca por nombre o slug normalizado (sin tildes): Bocamar, Naranmiche, Amaras, Mercado del Puerto, Tienda de la Costa, Farmacia del Puerto y Bienestar Caribe; si el tipo no existe cae al más parecido y, si el comercio no está en el mapa, a `cover_url`/`logo_url` de la BD.
+- `productImage(p, variant)` busca por nombre normalizado (`"Ceviche clásico"`, `"Banano (1 kg)"` → `"banano 1 kg"`, `"Protector solar SPF 50"`…; también claves cortas como `"banano"` o `"leche"`) y cae a `image_urls[0]`/`image_url`.
 - Cuando la BD apunte a estas fotos en Storage, los helpers siguen sirviendo (prefieren el recorte local, que no usa red).
 
 ### 4.7 Cómo comparar
@@ -925,9 +938,13 @@ import { designImages, merchantImage, productImage, promoImage, merchantDesignIm
 - Zoom de una franja (pt, coordenadas del contenido): `/private/tmp/claude-501/-Users-mac-Desktop-Claude-Code/1b7dc848-fbce-401a-8001-d099303fbdd1/scratchpad/venv/bin/python -I /private/tmp/claude-501/-Users-mac-Desktop-Claude-Code/1b7dc848-fbce-401a-8001-d099303fbdd1/scratchpad/shots/zc.py <diseño.png> <app.png> x0 y0 x1 y1 <salida.png> [escala]` (arriba diseño, abajo app).
 - Pantallas en pestañas con ScrollView propio: `paddingTop: insets.top` y `paddingBottom: useTabBarSpace()` (ver 08). Con `Screen` no hace falta nada.
 
-## 5. Estado de fidelidad (28 oct 2026)
+## 5. Estado de fidelidad (28 oct 2026; actualizado el 29 oct 2026)
 
 Integración final de los seis grupos (A–F). Cada pantalla se capturó de nuevo en web (Expo, 393 × 852 pt) contra su PNG.
+El 29 oct 2026 se alinearon los datos demo con los diseños (segunda tienda y farmacia, Agua, favoritos, notificaciones,
+soporte y líneas de pedidos) y se volvieron a capturar 01, 08, 10, 12, 14, 15, 25, 26, 27, 29, 30, 34, 40 y 44;
+las filas de 09, 13, 36, 38, 41 y 43 se actualizaron con la revisión visual de ese día. Tras la revisión de código
+del mismo día se capturaron otra vez 15, 20, 25, 28, 29, 33, 34 y 44.
 La galería completa quedó en `scratchpad/galeria/NN-compare.jpg` (diseño | app), que es un enlace a
 `/Users/mac/Desktop/Claude Code/YAVA/herramientas-comparacion/galeria/`.
 
@@ -939,56 +956,56 @@ Cómo leer la tabla:
 
 | # | Pantalla | Estado | Diferencia principal | Captura (ruta y estado) |
 |---|---|---|---|---|
-| 01 | Apertura | igual | Logo de 229 × 64 pt, centrado. El splash nativo de `app.json` sigue con `imageWidth: 200`, así que al pasar del splash a la Apertura hay un salto de tamaño. | `/` con la consulta de perfil colgada (`--hang /rest/v1/profiles`) |
+| 01 | Apertura | igual | Logo de 229 × 64 pt, centrado. El splash de iOS usa `splash-logo-ios.png` (el logo a 229 × 64 pt con 13,6 pt transparentes debajo): mismo tamaño y misma posición que la Apertura, así que ya no salta. Solo se ve en un build nativo nuevo (TestFlight). Android sigue con `splash-icon.png` a 200 pt. | `/` con la consulta de perfil colgada (`--hang /rest/v1/profiles`) |
 | 02 | Acceso | muy cercana | El botón de Apple solo sale en iOS; en web, todo lo de abajo sube un botón. "Entrar con correo" queda discreto bajo el pie. | `/login --login ninguno` |
 | 03 | Celular | muy cercana | Capturado vacío (placeholder). En iOS el CTA va sobre el teclado; no se probó en el dispositivo. | `/phone --login ninguno` |
 | 04 | Verificación | muy cercana | Capturado vacío; la caja con foco lleva borde azul. | `/verify?phone=3001234567 --login ninguno` |
 | 05 | Datos personales | muy cercana | El correo es el real. La nota "Puedes editar tus datos…" queda bajo el CTA anclado. | `/(customer)/personal-data` |
 | 06 | Ubicación | muy cercana | En web el mapa es el iframe OSM (en iOS, mapa de Apple) y asoma el marcador de OSM. La tarjeta muestra el texto de respaldo porque en web no hay geocodificación inversa. | `/(customer)/location` + S-LOC |
 | 07 | Dirección | muy cercana | Los íconos Casa/Trabajo son aproximados (MaterialCommunityIcons/Ionicons). | `/(customer)/address?id=b000…0001` + S-LOC |
-| 08 | Inicio | igual | — | `/` + S-LOC |
-| 09 | Restaurantes | muy cercana | Chip "Hasta 35 min" unos 2 pt más ancho; trofeo de Ionicons algo más fino. | `/restaurants?category=food` + S-LOC |
-| 10 | Búsqueda | muy cercana | Datos: orden, precios y descripciones de los platos; "Ceviches" sin "Cocina de mar". | `/search?q=ceviche` + S-LOC |
+| 08 | Inicio | igual | "Para tu próximo antojo" ya no depende de los favoritos: con los tres restaurantes guardados sigue Amaras, Bocamar. | `/` + S-LOC |
+| 09 | Restaurantes | muy cercana | Chip "Hasta 35 min" unos 2 pt más ancho; trofeo de Ionicons algo más fino. Revisado el 29 oct: sin cambios. | `/restaurants?category=food` + S-LOC |
+| 10 | Búsqueda | muy cercana | Ceviche clásico sale primero (`search_catalog` ordenado por la migración 0014). Datos: el PNG pone el mixto antes que el de camarón (el menú los ordena al revés), descripciones y precios de la BD; "Ceviches" sin "Cocina de mar". | `/search?q=ceviche` + S-LOC |
 | 11 | Filtros | muy cercana | La hoja se abre sobre 09 (el PNG la muestra sobre una variante de Inicio). | 09 + `--aria Filtros` |
-| 12 | Menú Bocamar | muy cercana | Datos: subtítulo con etiquetas, "(321)", "Acompañamientos" empuja "Bebidas"; el marcador sale lleno porque María tiene Bocamar en favoritos. | `/merchant/c000…0001` |
-| 13 | Detalle producto | muy cercana | Datos: descripción en 2 líneas (todo baja ≈ 19 pt) y "Nivel de picante". | `/product/e000…0001` |
-| 14 | Complementos | muy cercana | Datos: solo hay 1 bebida activa (no hay Agua y Limonada de coco está en pausa). El grupo opcional "Complementos" del seed sale como chips. La captura quedó sin bebida seleccionada. | 13 + `--click "Agregar ·"` |
-| 15 | Canasta | igual | — | `/cart` + S-CART |
+| 12 | Menú Bocamar | muy cercana | Pestañas "Acompañantes" y "Bebidas" como en el PNG. Datos: subtítulo "Ceviches · Mariscos · Comida de mar" (el PNG de 12 dice "Ceviches y sabores del Caribe"; el de 43 coincide con el app), descripciones nuevas, "(321)"; el marcador sale lleno porque María tiene Bocamar en favoritos. El 6.º plato es Agua (foto de 14). | `/merchant/c000…0001` |
+| 13 | Detalle producto | muy cercana | Descripción "Camarones, limón, cebolla morada y cilantro." y "Elige el picante" (Obligatorio · 1 opción) ya coinciden. El marcador sale lleno porque Bocamar es favorito de María (el PNG 13 lo muestra vacío; el 34 lo contradice). El recorte del avatar de Bocamar es algo distinto. | `/product/e000…0001` |
+| 14 | Complementos | muy cercana | Bebidas (Limonada natural seleccionada, Agua, Limonada de coco), "Acompañantes" con "Patacones" y "Chips de plátano" (sin el sufijo "Bocamar") y subtotal $34.000 coinciden. Faltan los enlaces "Ver todas" / "Ver todos" (solo salen si hay más productos que tarjetas) y sigue la fila extra "Complementos · Opcional · hasta 3" del seed. | 13 + `--aria 'Agregar · $28.000' --aria 'Agregar Limonada natural'` |
+| 15 | Canasta | igual | "Te puede gustar" toma las categorías que aún no están en la canasta (Patacones y Chips de plátano), no los dos más baratos. Elige entre todo el menú disponible (no entre los 8 primeros) y conoce la categoría de cada línea desde el primer render, así que las tarjetas no cambian al cargar. | `/cart` + S-CART |
 | 16 | Revisar y pagar | muy cercana | Pago en "Efectivo" porque la tarjeta está apagada sin la llave de Wompi; mapa web. | `/checkout` + S-CART + S-LOC |
 | 17 | Métodos de pago | muy cercana | No salen la fila Visa ni "Agregar tarjeta": `CARDS_ON` depende de `WOMPI_PUBLIC_KEY`. Se ve la nota "disponible pronto". | `/payment-methods?select=1` |
 | 18 | Agregar tarjeta | muy cercana | La casilla dice "Usar como tarjeta principal" (el PNG: "Guardar para próximos pedidos"), porque la tarjeta siempre se guarda. | `/add-card` |
 | 19 | Cupón | igual | Estado vacío capturado con la lista de cupones simulada vacía; con datos se ve la lista. | `/coupon` + `--mock coupons=[]` |
-| 20 | Pedido confirmado | igual | — | `/order/9000…1042/confirmed` |
+| 20 | Pedido confirmado | igual | "Llegará en 25–35 min": el #1042 tiene `eta_min`/`eta_max` 25/35 en la BD y en el seed (antes 7–12). | `/order/9000…1042/confirmed` |
 | 21 | Seguimiento | muy cercana | Mapa web (OSM) en vez del mapa con estilo. Datos: #1172 y horas. | `/order/9000…1060 --login cliente2` |
 | 22 | Chat repartidor | igual | Mensajes simulados. | `…1060/chat --login cliente2` + `--mock order_messages` |
 | 23 | Pedido entregado | igual | Estado sin calificar simulado. Con el #1042 ya calificado, "Calificar" desaparece y "Volver a pedir" pasa a primario. | `…1042/delivered` + `--mock ratings=[]` |
 | 24 | Calificación | igual | Capturado tras tocar 5 estrellas, "Sabor" y "Buena". | `…1042/rate` + `--mock ratings=[]` |
-| 25 | Mercado | muy cercana | Datos: hay una sola tienda. Mercado La Costa usa la fachada "Tienda de la Costa", por decisión de FOTOS-DISENO.md. Las unidades dicen "libra". | `/market` + S-LOC |
-| 26 | Tienda mercado | muy cercana | Datos: nombre, subtítulo, "Despensa" en vez de "Lácteos", Mango en vez de Leche. | `/merchant/c000…0004` |
-| 27 | Producto mercado | igual | Datos: "1 libra" y la descripción. | `/product/<banano>` |
+| 25 | Mercado | muy cercana | Las dos tiendas (Mercado del Puerto, Tienda de la Costa), los mosaicos y "Lo esencial" (Banano, Tomate, Arroz) coinciden; "Lo esencial" ya no repite los productos de la segunda tienda y de las copias muestra la que se puede comprar ("Aceite Premier 1 L", agotado en Mercado del Puerto, sale con "+" de Tienda de la Costa). Las unidades salen igual que en 26–28 ("Mango Tommy" · "1 unidad"). Asoma una 4.ª tarjeta (Leche) a la derecha. | `/market` + S-LOC |
+| 26 | Tienda mercado | igual | Subtítulo "Supermercado · Abarrotes y más" (descripción del comercio) y "Destacados" en el orden del PNG (Banano, Tomate, Arroz, Leche). | `/merchant/c000…0004` |
+| 27 | Producto mercado | igual | Chip "Bolsa de 1 kg" y "Producto fresco de Mercado del Puerto." | `/product/<banano>` |
 | 28 | Canasta mercado | igual | — | `/cart` + canasta de mercado |
-| 29 | Farmacia | muy cercana | Datos: una sola farmacia. Acetaminofén e Ibuprofeno usan su foto de la BD (no sobre blanco). Al final hay una nota de venta libre. | `/pharmacy` + S-LOC |
-| 30 | Producto farmacia | igual | No salen los puntos del carrusel porque el producto tiene 1 sola foto. | 29 → `--click "Protector solar FPS 50"` |
+| 29 | Farmacia | muy cercana | Las dos farmacias y los destacados (Protector solar SPF 50, Cepillo dental, Apósitos adhesivos) coinciden; el nombre se parte "Protector solar / SPF 50" como en el PNG y la lista ya no repite productos de Bienestar Caribe. No asoma una 3.ª farmacia y al final hay una nota de venta libre. | `/pharmacy` + S-LOC |
+| 30 | Producto farmacia | muy cercana | El título dice "SPF 50" (el PNG 30 dice "SPF50"; el de 29, "SPF 50"). No salen los puntos del carrusel porque el producto tiene 1 sola foto. | 29 → `--click "Protector solar"` (en 29 el nombre lleva espacio duro) |
 | 31 | Datos del envío | muy cercana | Campo extra "Describe el contenido (opcional)" antes del CTA (funcional, se conservó). | `/shipments/new` + S-LOC |
 | 32 | Revisar envío | muy cercana | El mapa web no muestra ruta ni pines del diseño; pago en Efectivo. | 31 llenado con `--fill` + "Cotizar envío" |
-| 33 | Ofertas | muy cercana | Datos: 3 promociones reales sin precio, así que donde iría el precio va el cupón. La del cupón usa su foto de Unsplash de la BD. | `/offers` + S-LOC |
-| 34 | Favoritos | muy cercana | Datos: María tiene un solo restaurante favorito. | `/favorites` + S-LOC |
+| 33 | Ofertas | muy cercana | Datos: 3 promociones reales sin precio, así que donde iría el precio va el cupón. La del cupón usa su foto de Unsplash de la BD. "Descubre más" (abajo, `--scroll 760`) pone primero los restaurantes: Naranmiche Desde $24.000, Amaras Desde $20.000 y Tienda de la Costa Desde $4.200. El "Desde" es el precio más bajo de la primera categoría del menú (los platos, no una bebida). El PNG muestra solo Amaras ($22.000) porque allí Naranmiche tiene promoción. | `/offers` + S-LOC |
+| 34 | Favoritos | igual | Bocamar, Naranmiche y Amaras; "Tus productos favoritos" muestra Ceviche clásico · Bocamar (productos en el orden de los favoritos, pedidos de los 5 primeros comercios guardados y ordenados y cortados en el app). | `/favorites` + S-LOC |
 | 35 | Cuenta | igual | — | `/account` |
-| 36 | Mis pedidos | igual | Datos: 5 pedidos; los del seed sin líneas dicen "0 productos". | `/orders --click Historial` |
+| 36 | Mis pedidos | igual | Bocamar 2 productos $38.000, Naranmiche 1 producto $30.000 y Amaras 1 producto $26.000, en el orden del PNG. Solo cambian las fechas y hay más pedidos debajo. | `/orders --click Historial` |
 | 37 | Direcciones | igual | — | `/addresses` + S-LOC |
-| 38 | Notificaciones | igual | Notificaciones simuladas (María no tiene ninguna). | `/notifications` + `--mock notifications` |
+| 38 | Notificaciones | igual | Datos reales (sin simulación): las tres notificaciones de #1042 y el punto azul en "Pedido entregado". Cambian el encabezado ("23 oct" en vez de "Hoy") y las horas. | `/notifications` |
 | 39 | Ayuda | igual | — | `/help` |
-| 40 | Chat soporte | igual | Conversación simulada. Sin caso abierto se ven 3 respuestas rápidas en lugar de las burbujas. | `/support?order=…1042` + `--mock support_cases/support_messages` |
-| 41 | Búsqueda sin resultados | igual | Datos: el segundo restaurante sale Naranmiche en vez de Amaras. | `/search?q=sushi` |
+| 40 | Chat soporte | igual | Datos reales (sin simulación). El saludo de soporte guardado en la BD reemplaza al saludo local, que solo sale mientras soporte no ha escrito. Solo cambian las horas. | `/support?order=…1042` |
+| 41 | Búsqueda sin resultados | igual | Datos: el segundo restaurante sale Naranmiche en vez de Amaras. Revisado el 29 oct: sin cambios. | `/search?q=sushi` |
 | 42 | Canasta vacía | igual | — | `/cart` sin canasta |
-| 43 | Restaurante cerrado | igual | Cerrado simulado (`is_open` en false); el texto del horario sale de `merchant_hours`. | `/merchant/c000…0001` + `--patch is_open` |
-| 44 | Producto no disponible | igual | — | `/cart` + S-CART-NODISP |
+| 43 | Restaurante cerrado | igual | Subtítulo "Ceviches · Mariscos · Comida de mar" como en el PNG. Cerrado simulado (`is_open` en false); el horario sale de `merchant_hours`. Datos: "(321+)". | `/merchant/c000…0001` + `--patch is_open` |
+| 44 | Producto no disponible | muy cercana | Línea gris "Limonada natural · 500 ml. · No disponible", aviso, alternativas Agua y Limonada de coco (misma categoría, orden del menú) y resumen $34.000 / $38.000 coinciden. "Limonada de coco" se corta en su tarjeta y la descripción del ceviche es la de la BD, con "Sin picante". | `/cart` + S-CART-NODISP (`--patch`, ver §0.1) |
 | 45 | Pago fallido | muy cercana | El #1173 ya pasó a cancelado: no hay "Reintentar" (esperado) y el método sale como "Tarjeta" genérica. | `…1061/payment-failed --login cliente2` |
 | 46 | Fuera de cobertura | muy cercana | Mapa web; la zona gris es decorativa. | `/(customer)/location` + S-LOC en Bogotá + `--geo 4.711,-74.072` |
 | 47 | Cancelar pedido | muy cercana | Ningún motivo viene preseleccionado (el PNG marca el primero). Datos: 1 producto. | `…1043/cancel --login cliente2` |
 | 48 | Sin conexión | igual | Se cortó la red después de cargar. | `/` + `--abort supabase.co/rest/ --abort-late --click Naranmiche` |
 
-Resumen: 22 igual, 26 muy cercana, ninguna parcial. Ninguna pantalla tiene diferencias de estructura, foto o color pendientes.
+Resumen (29 oct 2026): 22 igual, 26 muy cercana, ninguna parcial. Ninguna pantalla tiene diferencias de estructura, foto o color pendientes.
 
 ### 5.1 Herramienta de la galería
 
@@ -1030,13 +1047,13 @@ En `components/customer/order/` no quedan juegos paralelos: solo `kit.tsx` y `ph
    - el CTA sobre el teclado (03, 04);
    - los mapas nativos (06, 16, 21, 32, 46);
    - el botón de Apple (02).
-2. **Splash nativo.** Subir `imageWidth` a ≈ 229 en `app.json` para que no haya salto entre el splash y la Apertura (01). No se tocó.
+2. **Splash nativo.** Hecho en iOS (29 oct 2026): `app.json` usa `splash-logo-ios.png` a 229 pt sobre blanco. Es `logo-horizontal.png` llevado a 229 × 64 pt, como lo dibuja la Apertura (01), con 13,6 pt transparentes debajo para que quede 6,8 pt sobre el centro, igual que en la Apertura. Android se quedó como estaba. Falta verlo en un build nuevo de TestFlight.
 3. **Tarjetas (17, 18, 45).** Necesitan `WOMPI_PUBLIC_KEY`; sin ella solo hay Efectivo y Nequi/Daviplata.
-4. **Datos demo que alejan del diseño.** Si se quiere que se vean como el PNG:
-   - falta una segunda tienda de mercado y de farmacia;
-   - falta "Agua" y "Limonada de coco" activa en Bocamar;
-   - María tiene un solo favorito;
-   - los pedidos del seed no tienen líneas;
-   - María no tiene notificaciones ni casos de soporte.
+4. **Datos demo.** Resuelto el 29 oct 2026 (segunda tienda y farmacia, Agua y Limonada de coco activas, tres favoritos, líneas en todos los pedidos, notificaciones y caso de soporte de María). Quedan detalles menores:
+   - la foto de Unsplash de "Alcohol antiséptico 350 ml" (Farmacia del Puerto y Bienestar Caribe) muestra un cartel de "COVID-19"; hace falta una foto de un frasco de alcohol o un recorte de diseño;
+   - Tienda de la Costa y Bienestar Caribe no tienen logo: la baldosa de 26 usa su fachada;
+   - "Ver todas" / "Ver todos" de 14 solo salen cuando hay más productos que tarjetas;
+   - Agua, Leche (1 L) de las dos tiendas, Cepillo dental y Apósitos adhesivos tienen en la BD una foto equivalente de Unsplash (revisada a ojo el 29 oct 2026), y Arroz (1 kg) de Tienda de la Costa reutiliza `arroz.jpg` de Mercado del Puerto. Así los paneles de comercio, dueño y admin no muestran el ícono vacío; el app de cliente sigue usando los recortes del diseño por nombre. Subir esos recortes a Storage (`product-images`) necesita la llave de servicio;
+   - en 16, "Entrega estimada" suma el traslado a la preparación (35 – 50 min) y el PNG dice 25 – 35 min.
 5. **Arranque sin red (visto en web).** Con sesión guardada y sin red desde el arranque, la Apertura se queda 10–25 s: `refreshProfile` espera los reintentos de las consultas. Luego se muestra el inicio con el aviso de sin conexión. Conviene revisarlo en nativo y, si pasa, ponerle un tiempo límite al perfil en `store/auth.ts`.
 6. **Mapa en web.** El marcador propio del iframe OSM asoma bajo el pin (`src/lib/maps-web.tsx`). Solo afecta a la web.

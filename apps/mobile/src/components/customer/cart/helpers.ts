@@ -1,20 +1,8 @@
 import { create } from "zustand";
 import { normalizeName } from "@/lib/design-images";
 
-/**
- * Nombre y presentación de un producto de tienda: "Banano (libra)" → { name: "Banano", unit: "1 libra" };
- * "Arroz Diana 1 kg" → { name: "Arroz Diana", unit: "1 kg" }. Si el nombre no trae presentación, `unit` es `null`.
- */
-export function splitUnit(full: string): { name: string; unit: string | null } {
-  const paren = full.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-  if (paren) {
-    const u = paren[2].trim();
-    return { name: paren[1], unit: /^\d/.test(u) ? u : `1 ${u}` };
-  }
-  const qty = full.match(/^(.*?)\s+(\d+(?:[.,]\d+)?\s?(?:kg|g|gr|mg|l|lt|ml|cc|oz|lb|und|unidades?)\b.*)$/i);
-  if (qty && qty[1].length >= 3) return { name: qty[1], unit: qty[2] };
-  return { name: full, unit: null };
-}
+/** Nombre y presentación de un producto de tienda (misma función que 25, 26 y 27). */
+export { splitUnit } from "@/components/customer/store/featured";
 
 /** "Patacones Bocamar" en una tarjeta que ya dice "Bocamar" debajo → "Patacones". */
 export function withoutMerchant(name: string, merchantName: string | null | undefined): string {

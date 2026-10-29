@@ -18,7 +18,7 @@ const MUTED = "#858D9F";
 /** Espacio duro: una línea vacía conserva su alto en iOS, Android y web (" " se colapsa en web). */
 const NBSP = "\u00A0";
 
-/** Presentación corta de un producto ("500 ml.", "1 libra") a partir del nombre o la descripción. */
+/** Presentación corta de un producto ("500 ml.", "1 kg") a partir del nombre o la descripción. */
 function shortUnit(name: string, description: string | null | undefined): string | null {
   const { unit } = splitUnit(name);
   if (unit) return unit;
@@ -34,14 +34,20 @@ function shortUnit(name: string, description: string | null | undefined): string
 export function UnavailableCart(p: CartViewProps) {
   const insets = useSafeAreaInsets();
   const m = p.merchant;
-  // "En su lugar": primero lo que comparte palabra con lo agotado (otra limonada), luego lo de precio más parecido.
+  // "En su lugar": primero lo de la misma categoría que lo agotado, en el orden del menú (`p.suggestions` ya viene
+  // así: con Limonada natural agotada da Agua y Limonada de coco, como en el diseño); luego lo que comparte una
+  // palabra con lo agotado (otra limonada) y al final lo de precio más parecido.
   const alternatives = useMemo(() => {
     const gone = p.lines.filter((l) => p.unavailable.has(l.product_id));
+    const cats = new Set(gone.map((l) => p.products.get(l.product_id)?.category_id).filter((c): c is string => Boolean(c)));
     const words = new Set(gone.flatMap((l) => normalizeName(l.name).split(" ").filter((w) => w.length > 3)));
     const ref = gone[0]?.unit_price ?? 0;
-    const score = (s: ProductRow) => (normalizeName(s.name).split(" ").some((w) => words.has(w)) ? 0 : 1e9) + Math.abs(s.price - ref);
-    return [...p.suggestions].sort((a, b) => score(a) - score(b)).slice(0, 2);
-  }, [p.lines, p.unavailable, p.suggestions]);
+    const tier = (s: ProductRow) => (s.category_id && cats.has(s.category_id) ? 0 : normalizeName(s.name).split(" ").some((w) => words.has(w)) ? 1 : 2);
+    const order = new Map(p.suggestions.map((s, i) => [s.id, i]));
+    return [...p.suggestions]
+      .sort((a, b) => tier(a) - tier(b) || (tier(a) === 0 ? (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0) : Math.abs(a.price - ref) - Math.abs(b.price - ref)))
+      .slice(0, 2);
+  }, [p.lines, p.unavailable, p.products, p.suggestions]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>

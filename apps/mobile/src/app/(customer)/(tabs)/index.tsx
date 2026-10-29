@@ -49,9 +49,10 @@ export default function Home() {
   }, [locHydrated, address, session, addresses.data]);
 
   /**
-   * "Para tu próximo antojo": primero algo por descubrir (cerca, ni destacado ni favorito), luego los
-   * favoritos del usuario y después el resto de comercios cercanos. Con los datos demo da Amaras, Bocamar,
-   * Naranmiche (el orden del diseño).
+   * "Para tu próximo antojo": primero lo cercano que no es destacado (lo que no sale primero en "Restaurantes
+   * cerca"; lo no guardado antes que los favoritos), luego los destacados (favoritos primero) y al final los
+   * favoritos que no están cerca. El orden no depende de cuántos favoritos haya: con los datos demo da Amaras,
+   * Bocamar, Naranmiche (el orden del diseño), tenga María uno o los tres restaurantes guardados.
    */
   const cravings = useMemo<MerchantCardData[]>(() => {
     const favs: MerchantCardData[] = (favMerchants.data ?? []).map((m) => ({
@@ -60,9 +61,13 @@ export default function Home() {
     }));
     const favSet = new Set(favs.map((m) => m.id));
     const list = nearby.data ?? [];
-    const discover = list.filter((m) => !m.featured && !favSet.has(m.id));
-    const rest = list.filter((m) => m.featured && !favSet.has(m.id));
-    return [...discover, ...favs, ...rest].slice(0, 8);
+    const nearSet = new Set(list.map((m) => m.id));
+    const group = (featured: boolean, fav: boolean) => list.filter((m) => Boolean(m.featured) === featured && favSet.has(m.id) === fav);
+    return [
+      ...group(false, false), ...group(false, true),
+      ...group(true, true), ...group(true, false),
+      ...favs.filter((m) => !nearSet.has(m.id)),
+    ].slice(0, 8);
   }, [favMerchants.data, nearby.data]);
 
   function onCategory(c: HomeCategory) {

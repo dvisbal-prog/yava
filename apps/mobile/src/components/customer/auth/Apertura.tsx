@@ -8,7 +8,10 @@ const LOGO_HORIZONTAL = require("../../../../assets/images/logo-horizontal.png")
 
 /**
  * Pantalla 01 · Apertura: fondo blanco y el logo horizontal centrado (229 × 64 pt, medido en
- * tanda-01/01-apertura.png). Es la vista que se ve mientras carga la sesión, justo después del splash nativo.
+ * tanda-01/01-apertura.png; el PNG lo dibuja un 6 % más alto que `logo-horizontal.png`, por eso `fill`).
+ * Es la vista que se ve mientras carga la sesión, justo después del splash nativo. El splash de iOS usa
+ * `splash-logo-ios.png`: el mismo logo ya llevado a 229 × 64 pt con 13,6 pt transparentes debajo, así que queda
+ * del mismo tamaño y 6,8 pt sobre el centro, igual que aquí, y no salta.
  */
 export function Apertura() {
   return (

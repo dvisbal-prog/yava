@@ -50,20 +50,28 @@ export default function Offers() {
     return list.filter((p) => merchants.data?.find((m) => m.id === p.merchant_id)?.category === filter);
   }, [promos.data, merchants.data, filter]);
 
-  // "Descubre más": comercios cercanos sin promoción (de la categoría elegida) con su precio más bajo.
+  // "Descubre más": comercios cercanos sin promoción (de la categoría elegida) con su precio desde. En "Todas" van
+  // primero los restaurantes (como en el diseño, que muestra Amaras) y luego tiendas y farmacias, cada grupo en el
+  // orden de `nearby_merchants`.
   const discover = useMemo(() => {
     const promoted = new Set(merchantIds);
-    return (nearby.data ?? []).filter((m) => !promoted.has(m.id) && (filter === "all" || m.category === filter)).slice(0, 3);
+    return (nearby.data ?? [])
+      .filter((m) => !promoted.has(m.id) && (filter === "all" || m.category === filter))
+      .sort((a, b) => Number(b.category === "food") - Number(a.category === "food"))
+      .slice(0, 3);
   }, [nearby.data, merchantIds, filter]);
   const discoverIds = useMemo(() => discover.map((m) => m.id), [discover]);
   const discoverProducts = useProductsOfMerchants(discoverIds, 60);
+  // "Desde": el precio más bajo de la primera categoría del menú (los platos), no el de una bebida o un acompañante.
   const minPrice = useMemo(() => {
-    const out = new Map<string, number>();
+    const catSort = new Map((discoverProducts.data?.categories ?? []).map((c) => [c.id, c.sort]));
+    const best = new Map<string, { cs: number; price: number }>();
     for (const p of discoverProducts.data?.products ?? []) {
-      const cur = out.get(p.merchant_id);
-      if (cur === undefined || p.price < cur) out.set(p.merchant_id, p.price);
+      const cs = catSort.get(p.category_id ?? "") ?? Number.MAX_SAFE_INTEGER;
+      const cur = best.get(p.merchant_id);
+      if (!cur || cs < cur.cs || (cs === cur.cs && p.price < cur.price)) best.set(p.merchant_id, { cs, price: p.price });
     }
-    return out;
+    return new Map([...best].map(([id, v]) => [id, v.price]));
   }, [discoverProducts.data]);
 
   async function applyCoupon(code: string) {

@@ -9,13 +9,12 @@ import { etaText, feeText, merchantPhoto, type MerchantCardData } from "@/compon
 import { designImages, type DesignImageSource } from "@/lib/design-images";
 import { RatingRow } from "./NearbyCard";
 
-/** "Banano (libra)" → { name: "Banano", unit: "libra" }; "Arroz Diana 1 kg" → { name: "Arroz Diana", unit: "1 kg" }. */
-export function splitUnit(full: string): { name: string; unit: string | null } {
-  const paren = full.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-  if (paren) return { name: paren[1], unit: paren[2] };
-  const qty = full.match(/^(.*?)\s+(\d+(?:[.,]\d+)?\s?(?:kg|g|gr|l|lt|ml|cc|und|unidades?)\b.*)$/i);
-  if (qty && qty[1].length >= 3) return { name: qty[1], unit: qty[2] };
-  return { name: full, unit: null };
+/** Nombre y presentación ("Banano (1 kg)" → "Banano" + "1 kg"; "Mango Tommy (unidad)" → "1 unidad"): la misma función que 26, 27 y 28. */
+export { splitUnit } from "@/components/customer/store/featured";
+
+/** Sigla + número sin cortar entre líneas: "Protector solar SPF 50" se parte "Protector solar / SPF 50" (29), no "SPF / 50". */
+export function keepCodeTogether(name: string): string {
+  return name.replace(/\b([A-Z]{2,}) (\d)/g, "$1\u00A0$2");
 }
 
 /** Título de sección + "Ver todos ›" con tamaño propio (25 mide 16,6 pt; 29 mide 15,5 pt). */
@@ -159,7 +158,7 @@ export function FeaturedProductCard({ name, price, image, imageFrame, onPress, o
     <View style={[styles.feat, { width }, style]}>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={name} style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.9 : 1 }]}>
         <Image source={image} style={[{ position: "absolute", left: frame.left ?? 6, top: frame.top ?? 4.2, width: frame.width, height: frame.height }, disabled && { opacity: 0.5 }]} contentFit="contain" transition={120} />
-        <Text numberOfLines={2} style={styles.featName}>{name}</Text>
+        <Text numberOfLines={2} style={styles.featName}>{keepCodeTogether(name)}</Text>
         <Text style={styles.featPrice}>{formatCOP(price)}</Text>
       </Pressable>
       <AddButton size={27.3} onPress={onAdd} disabled={disabled || !onAdd} accessibilityLabel={`Agregar ${name}`} style={styles.featAdd} />

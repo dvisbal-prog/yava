@@ -215,7 +215,7 @@ export const designImages = {
 
 export type DesignImageKey = keyof typeof designImages;
 
-/** "Mercado La Costa" → "mercado la costa"; "Ceviche clásico" → "ceviche clasico". */
+/** "Mercado del Puerto" → "mercado del puerto"; "Banano (1 kg)" → "banano 1 kg"; "Ceviche clásico" → "ceviche clasico". */
 export function normalizeName(s: string | null | undefined): string {
   return (s ?? "")
     .normalize("NFD")
@@ -252,18 +252,17 @@ const MERCHANTS: Record<string, Partial<Record<MerchantImageKind, DesignImage>>>
   },
   naranmiche: { cover: designImages.naranmicheBanda, card: designImages.naranmicheTarjeta, wide: designImages.naranmicheBanda, carousel: designImages.naranmicheCarrusel, nearby: designImages.naranmicheCerca, offer: designImages.ofertaHamburguesaTarjeta },
   amaras: { cover: designImages.amarasBanda, card: designImages.amarasTarjeta, wide: designImages.amarasBanda, compact: designImages.amarasAntojo, nearby: designImages.amarasCerca, offer: designImages.ofertaAmarasTarjeta },
-  "mercado la costa": {
-    cover: designImages.mercadoPortadaTienda, card: designImages.fachadaTiendaDeLaCosta, wide: designImages.fachadaTiendaDeLaCosta,
-    storefront: designImages.fachadaTiendaDeLaCosta, logo: designImages.mercadoLogo, offer: designImages.bannerMercadoCompleto,
-  },
+  // Mercado (25/26): "Mercado del Puerto" es la tienda principal (portada, logo y oferta de 33);
+  // "Tienda de la Costa" es la segunda tienda de "Tiendas cercanas" (solo fachada).
   "mercado del puerto": {
     cover: designImages.mercadoPortadaTienda, card: designImages.fachadaMercadoDelPuerto, wide: designImages.fachadaMercadoDelPuerto,
-    storefront: designImages.fachadaMercadoDelPuerto, logo: designImages.mercadoLogo,
+    storefront: designImages.fachadaMercadoDelPuerto, logo: designImages.mercadoLogo, offer: designImages.bannerMercadoCompleto,
   },
-  "farmacia vida": {
-    cover: designImages.fachadaFarmaciaDelPuerto, card: designImages.fachadaFarmaciaDelPuerto, wide: designImages.fachadaFarmaciaDelPuerto,
-    storefront: designImages.fachadaFarmaciaDelPuerto, storefrontCard: designImages.fachadaFarmaciaDelPuertoTarjeta,
+  "tienda de la costa": {
+    cover: designImages.fachadaTiendaDeLaCosta, card: designImages.fachadaTiendaDeLaCosta, wide: designImages.fachadaTiendaDeLaCosta,
+    storefront: designImages.fachadaTiendaDeLaCosta,
   },
+  // Farmacia (29/30): "Farmacia del Puerto" y "Bienestar Caribe".
   "farmacia del puerto": {
     cover: designImages.fachadaFarmaciaDelPuerto, card: designImages.fachadaFarmaciaDelPuerto, wide: designImages.fachadaFarmaciaDelPuerto,
     storefront: designImages.fachadaFarmaciaDelPuerto, storefrontCard: designImages.fachadaFarmaciaDelPuertoTarjeta,
@@ -338,18 +337,23 @@ const PRODUCTS: Record<string, Partial<Record<ProductImageVariant, DesignImage>>
   "chips de platano": { default: designImages.productoChipsPlatano, complement: designImages.productoChipsPlatanoComplemento },
   "limonada natural": { default: designImages.productoLimonadaNatural, menu: designImages.productoLimonadaNaturalMenu },
   "limonada de coco": { default: designImages.productoLimonadaCoco, complement: designImages.productoLimonadaCocoComplemento },
-  "agua": { default: designImages.productoAgua, complement: designImages.productoAguaComplemento },
-  "agua natural": { default: designImages.productoAgua, complement: designImages.productoAguaComplemento },
-  "banano libra": { default: designImages.productoBanano, white: designImages.productoBananoBlanco, card: designImages.productoBananoTarjeta },
+  // La foto de 14 (casi cuadrada) sirve también para las tarjetas anchas del grid de 12; la vertical se ve como un acercamiento.
+  "agua": { default: designImages.productoAgua, complement: designImages.productoAguaComplemento, menu: designImages.productoAguaComplemento },
+  "agua natural": { default: designImages.productoAgua, complement: designImages.productoAguaComplemento, menu: designImages.productoAguaComplemento },
+  // Mercado (25–28): nombres de la BD ("Banano (1 kg)", "Arroz (1 kg)", "Leche (1 L)") y claves cortas de respaldo.
+  "banano 1 kg": { default: designImages.productoBanano, white: designImages.productoBananoBlanco, card: designImages.productoBananoTarjeta },
   "banano": { default: designImages.productoBanano, white: designImages.productoBananoBlanco, card: designImages.productoBananoTarjeta },
-  "tomate libra": { default: designImages.productoTomate, card: designImages.productoTomateTarjeta },
+  "tomate 1 kg": { default: designImages.productoTomate, card: designImages.productoTomateTarjeta },
   "tomate": { default: designImages.productoTomate, card: designImages.productoTomateTarjeta },
-  "arroz diana 1 kg": { default: designImages.productoArroz, card: designImages.productoArrozTarjeta },
+  "arroz 1 kg": { default: designImages.productoArroz, card: designImages.productoArrozTarjeta },
   "arroz": { default: designImages.productoArroz, card: designImages.productoArrozTarjeta },
+  "leche 1 l": { default: designImages.productoLeche },
   "leche": { default: designImages.productoLeche },
-  "protector solar fps 50": { default: designImages.productoProtectorSolar, white: designImages.productoProtectorSolarBlanco },
+  // Farmacia (29/30): "Protector solar SPF 50", "Cepillo dental", "Apósitos adhesivos".
+  "protector solar spf 50": { default: designImages.productoProtectorSolar, white: designImages.productoProtectorSolarBlanco },
   "protector solar": { default: designImages.productoProtectorSolar, white: designImages.productoProtectorSolarBlanco },
   "cepillo dental": { default: designImages.productoCepilloDental },
+  "apositos adhesivos": { default: designImages.productoApositos },
   "apositos": { default: designImages.productoApositos },
 };
 

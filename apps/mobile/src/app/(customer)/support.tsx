@@ -145,6 +145,10 @@ export default function Support() {
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
   const greeting = `Hola${firstName ? `, ${firstName}` : ""}. ¿En qué podemos ayudarte${o ? " con tu pedido" : ""}?`;
+  // El saludo local solo hace falta mientras soporte no haya escrito: si la conversación ya empieza con un
+  // mensaje de soporte (su propio saludo), no se repite.
+  const firstMsg = messages.data?.[0];
+  const supportOpened = Boolean(firstMsg && firstMsg.sender_id !== uid);
   const openOrder = () => { if (o) router.push(o.status === "delivered" ? `/(customer)/order/${o.id}/delivered` as never : `/(customer)/order/${o.id}` as never); };
 
   return (
@@ -177,7 +181,7 @@ export default function Support() {
           <ErrorState error={openCase.error ?? messages.error} onRetry={() => { void openCase.refetch(); void messages.refetch(); }} />
         ) : (
           <FlatList ref={listRef} data={messages.data ?? []} keyExtractor={(m) => String(m.id)} contentContainerStyle={styles.listPad}
-            ListHeaderComponent={<Bubble body={greeting} time={openCase.data?.created_at ? formatTime(openCase.data.created_at) : undefined} mine={false} />}
+            ListHeaderComponent={supportOpened ? undefined : <Bubble body={greeting} time={openCase.data?.created_at ? formatTime(openCase.data.created_at) : undefined} mine={false} />}
             ListEmptyComponent={
               <View style={styles.suggestions}>
                 {["Necesito revisar un cobro.", "Mi pedido llegó incompleto.", "Mi pedido está demorado."].map((s) => (

@@ -11,6 +11,7 @@ import { isProductAvailable } from "@/components/customer/ProductRow";
 import { productImage, productDesignImage, type DesignImageSource } from "@/lib/design-images";
 import type { ProductRow, ProductCategoryRow, OptionGroupWithOptions } from "@/features/customer/types";
 import { PillStepper } from "./PillStepper";
+import { withoutMerchant } from "@/components/customer/cart/helpers";
 
 
 /** En web un `<button>` no puede contener otro: las tarjetas con "+" solo se anuncian como botón en nativo. */
@@ -130,13 +131,13 @@ export function ComplementsSheet({
                   {s.drinks ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.drinkRow}>
                       {list.map((p) => (
-                        <DrinkTile key={p.id} p={p} qty={extras[p.id] ?? 0} onQty={(q) => setQty(p.id, q)} />
+                        <DrinkTile key={p.id} p={p} label={withoutMerchant(p.name, merchantName)} qty={extras[p.id] ?? 0} onQty={(q) => setQty(p.id, q)} />
                       ))}
                     </ScrollView>
                   ) : (
                     <View style={styles.sideGrid}>
                       {list.map((p) => (
-                        <SideCard key={p.id} p={p} qty={extras[p.id] ?? 0} onQty={(q) => setQty(p.id, q)} />
+                        <SideCard key={p.id} p={p} label={withoutMerchant(p.name, merchantName)} qty={extras[p.id] ?? 0} onQty={(q) => setQty(p.id, q)} />
                       ))}
                     </View>
                   )}
@@ -184,7 +185,7 @@ export function ComplementsSheet({
                 <View key={`${l.product_id}-${i}`} style={styles.lineRow}>
                   <Image source={l === mainWithOpts ? mainImage ?? productImage({ name: l.name }) : productImage({ name: l.name })} style={styles.lineThumb} contentFit="cover" />
                   <View style={{ flex: 1, marginLeft: 11.6 }}>
-                    <Text style={styles.lineName} numberOfLines={1}>{l.name}</Text>
+                    <Text style={styles.lineName} numberOfLines={1}>{withoutMerchant(l.name, merchantName)}</Text>
                     {l.options.length ? <Text style={styles.lineOpts} numberOfLines={1}>{l.options.map((o) => o.name).join(", ")}</Text> : null}
                   </View>
                   <View style={{ alignItems: "flex-end", alignSelf: "flex-start", marginTop: 7.4 }}>
@@ -222,7 +223,7 @@ export function ComplementsSheet({
  * Tarjeta de bebida 117,3 × 111,5 pt (C12d): seleccionada con un aro azul de 1,6 pt por fuera de la foto y el
  * stepper C14e (82 × 25,5) centrado abajo; si no, "+" azul de 24 pt con aro blanco.
  */
-function DrinkTile({ p, qty, onQty }: { p: ProductRow; qty: number; onQty: (q: number) => void }) {
+function DrinkTile({ p, label, qty, onQty }: { p: ProductRow; label: string; qty: number; onQty: (q: number) => void }) {
   const on = qty > 0;
   return (
     <View style={{ width: 117.3 }}>
@@ -237,14 +238,14 @@ function DrinkTile({ p, qty, onQty }: { p: ProductRow; qty: number; onQty: (q: n
           )}
         </Pressable>
       </View>
-      <Text style={styles.itemName} numberOfLines={1}>{p.name}</Text>
+      <Text style={styles.itemName} numberOfLines={1}>{label}</Text>
       <Text style={styles.itemPrice}>{formatCOP(p.price)}</Text>
     </View>
   );
 }
 
 /** Tarjeta de acompañante 172,4 × 97 pt con "+" blanco abajo-derecha; seleccionada = aro azul + stepper. */
-function SideCard({ p, qty, onQty }: { p: ProductRow; qty: number; onQty: (q: number) => void }) {
+function SideCard({ p, label, qty, onQty }: { p: ProductRow; label: string; qty: number; onQty: (q: number) => void }) {
   const on = qty > 0;
   return (
     <View style={{ flex: 1, maxWidth: 172.4 }}>
@@ -257,7 +258,7 @@ function SideCard({ p, qty, onQty }: { p: ProductRow; qty: number; onQty: (q: nu
           <AddButton size={26} variant="white" onPress={() => onQty(1)} accessibilityLabel={`Agregar ${p.name}`} style={styles.sideAdd} />
         )}
       </Pressable>
-      <Text style={styles.itemName} numberOfLines={1}>{p.name}</Text>
+      <Text style={styles.itemName} numberOfLines={1}>{label}</Text>
       <Text style={styles.itemPrice}>{formatCOP(p.price)}</Text>
     </View>
   );

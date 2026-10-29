@@ -18,11 +18,12 @@ export function buildSections(products: ProductRow[], categories: ProductCategor
  * así que se arma con el menú completo reordenado:
  * - restaurantes: la primera categoría (platos fuertes) y luego, por turnos, el resto empezando por la última
  *   (bebidas, acompañantes…) → "Ceviche clásico, camarón, mixto, Limonada natural…" como en el diseño;
- * - tiendas (mercado/farmacia): un producto de cada categoría por turnos → "Banano, Tomate, Arroz…".
+ * - tiendas (mercado/farmacia): el `sort` de cada producto, que en las tiendas es único y lo pone el comercio
+ *   (empates: orden de categoría) → "Banano, Tomate, Arroz, Leche…" como en el diseño de 26.
  */
 export function featuredProducts(sections: MenuSection[], kind: "food" | "store"): ProductRow[] {
   if (!sections.length) return [];
-  if (kind === "store") return roundRobin(sections.map((s) => s.items));
+  if (kind === "store") return sections.flatMap((s) => s.items).sort((a, b) => a.sort - b.sort);
   const [first, ...rest] = sections;
   return [...first.items, ...roundRobin([...rest].reverse().map((s) => s.items))];
 }
@@ -42,7 +43,7 @@ function roundRobin<T>(lists: T[][]): T[] {
 }
 
 /**
- * Subtítulo del comercio: lema + etiquetas que no repiten el lema ("Ceviches · Mariscos · Costeño").
+ * Subtítulo del comercio: lema + etiquetas que no repiten el lema ("Ceviches · Mariscos · Comida de mar").
  * `max` limita el número de segmentos y `maxChars` el largo total (se quitan etiquetas del final).
  */
 export function merchantSubtitle(m: { tagline?: string | null; tags?: string[] | null }, max = 3, maxChars = 40): string {
@@ -63,8 +64,17 @@ export function merchantSubtitle(m: { tagline?: string | null; tags?: string[] |
 }
 
 /**
- * Nombre y presentación de un producto de tienda: "Banano (libra)" → { name: "Banano", unit: "1 libra" };
- * "Arroz Diana 1 kg" → { name: "Arroz Diana", unit: "1 kg" }; "Acetaminofén 500 mg x 10" → { "Acetaminofén", "500 mg x 10" }.
+ * Subtítulo de la cabecera de una tienda de mercado o farmacia (26): la descripción del comercio si es corta
+ * ("Supermercado · Abarrotes y más", como en el diseño); si no cabe en la línea, el lema con etiquetas.
+ */
+export function storeSubtitle(m: { description?: string | null; tagline?: string | null; tags?: string[] | null }, maxChars = 32): string {
+  const d = (m.description ?? "").trim().replace(/\.$/, "");
+  return d && d.length <= maxChars ? d : merchantSubtitle(m, 2, maxChars);
+}
+
+/**
+ * Nombre y presentación de un producto de tienda: "Banano (1 kg)" → { name: "Banano", unit: "1 kg" }; "Leche (1 L)" → { "Leche", "1 L" };
+ * "Mango (unidad)" → { "Mango", "1 unidad" }; "Acetaminofén 500 mg x 10" → { "Acetaminofén", "500 mg x 10" }.
  * Si el nombre no trae la presentación, `unit` es `null`.
  */
 export function splitUnit(full: string): { name: string; unit: string | null } {

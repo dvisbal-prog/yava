@@ -5,9 +5,9 @@ const CART_PRODUCTS: Record<string, DesignImage> = {
   "ceviche clasico": designImages.productoCevicheClasicoCanasta,
   "limonada natural": designImages.productoLimonadaNaturalCanasta,
   // 28 (mercado): mismo encuadre de la tarjeta de línea, 103 × 87 pt.
-  "banano libra": designImages.productoBananoCanasta,
+  "banano 1 kg": designImages.productoBananoCanasta,
   "banano": designImages.productoBananoCanasta,
-  "tomate libra": designImages.productoTomateCanasta,
+  "tomate 1 kg": designImages.productoTomateCanasta,
   "tomate": designImages.productoTomateCanasta,
 };
 /** Fotos de las tarjetas "Te puede gustar" de 15 (encuadre 1,86:1). */
@@ -16,6 +16,8 @@ const CART_SUGGESTIONS: Record<string, DesignImage> = {
   "patacones": designImages.productoPataconesCanasta,
   "chips de platano bocamar": designImages.productoChipsPlatanoCanasta,
   "chips de platano": designImages.productoChipsPlatanoCanasta,
+  // Sin recorte propio: la foto casi cuadrada de 14 (la vertical, en tarjeta ancha, queda como un acercamiento).
+  "agua": designImages.productoAguaComplemento,
 };
 const CART_MERCHANT_THUMB: Record<string, DesignImage> = { bocamar: designImages.bocamarCanastaMiniatura };
 const CART_MERCHANT_BANNER: Record<string, DesignImage> = { bocamar: designImages.bocamarCanastaPortada };

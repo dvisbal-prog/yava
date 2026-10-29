@@ -17,7 +17,7 @@ import { RiderIcon } from "@/components/customer/store/StoreIcons";
 import {
   InfoStrip, UnderlineTabs, MenuGridCard, SegmentBar, MarketProductCard, ClosedMenuCard, ClosedNotice, StatCell,
 } from "@/components/customer/store/MenuParts";
-import { buildSections, featuredProducts, topPerCategory, merchantSubtitle, splitUnit } from "@/components/customer/store/featured";
+import { buildSections, featuredProducts, topPerCategory, merchantSubtitle, storeSubtitle, splitUnit } from "@/components/customer/store/featured";
 import {
   useMerchant, useMerchantMenu, useMerchantHours, useFavoriteIds, useToggleFavorite, useRequireAuth, nextOpeningLabel,
   type ProductRow as ProductRowData, type MerchantPublic,
@@ -231,7 +231,7 @@ export default function MerchantScreen() {
                   <Text style={styles.storeName} numberOfLines={1}>{m.name}</Text>
                   {!isOpen ? <Badge label="Cerrado" tone="closed" style={{ marginLeft: 8 }} /> : null}
                 </View>
-                <Text style={styles.storeSub} numberOfLines={1}>{merchantSubtitle(m, 2, 32)}</Text>
+                <Text style={styles.storeSub} numberOfLines={1}>{storeSubtitle(m)}</Text>
                 <View style={styles.storeMeta}>
                   <Ionicons name="time-outline" size={16.5} color="#2C3445" />
                   <Text style={[styles.storeMetaText, { marginLeft: 6.4 }]}>{etaText(m.prep_min, m.prep_max)}</Text>
@@ -336,12 +336,15 @@ function MenuLogo({ m }: { m: MerchantPublic }) {
   return <Image source={merchantImage(m, "logo")} style={[styles.logoTile, { backgroundColor: colors.surfaceGray }]} contentFit="cover" />;
 }
 
-/** Baldosa grande del logo (26): 88,7 pt radio 16 sobre menta; la foto va con 4 pt de aire como en el PNG. */
+/**
+ * Baldosa grande del logo (26): 88,7 pt radio 16 sobre menta; la foto va con 4 pt de aire como en el PNG.
+ * Sin logo (ni de diseño ni en la BD) se usa la fachada del comercio, para no dejar la baldosa vacía.
+ */
 function StoreLogo({ m, size }: { m: MerchantPublic; size: number }) {
   const local = merchantDesignImage(m, "logo");
   return (
     <View style={[styles.storeLogo, { width: size, height: size }]}>
-      <Image source={local ?? merchantImage(m, "logo")} style={local !== undefined ? { position: "absolute", left: 4.2, top: 4.2, width: size - 8.4, height: size - 8.4 } : { width: size, height: size }} contentFit="cover" />
+      <Image source={local ?? merchantImage(m, "logo") ?? merchantImage(m, "storefront")} style={local !== undefined ? { position: "absolute", left: 4.2, top: 4.2, width: size - 8.4, height: size - 8.4 } : { width: size, height: size }} contentFit="cover" />
     </View>
   );
 }

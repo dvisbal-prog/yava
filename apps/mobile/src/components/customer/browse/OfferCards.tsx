@@ -86,7 +86,8 @@ export function DiscoverCard({ name, tagline, fromPrice, image, aspect, onPress,
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={name} style={({ pressed }) => [styles.discover, { opacity: pressed ? 0.95 : 1 }, style]}>
       <OfferPhoto image={image} aspect={aspect} bg="#F5F5F5" id={id} fade={30} />
-      <Text numberOfLines={1} style={styles.discName}>{name}</Text>
+      {/* Un nombre largo ("Farmacia del Puerto") se achica para caber junto a la foto (iOS/Android; en web se corta). */}
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.discName}>{name}</Text>
       {tagline ? <Text numberOfLines={1} style={styles.discTag}>{tagline}</Text> : null}
       {fromPrice ? (
         <Text style={styles.discFrom}>Desde <Text style={styles.discPrice}>{fromPrice}</Text></Text>

@@ -19,7 +19,7 @@ export interface CartMerchantView {
 export interface CartViewProps {
   merchant: CartMerchantView;
   lines: CartLine[];
-  /** Productos frescos de la BD por id (foto, descripción, disponibilidad). */
+  /** Productos de las líneas por id (foto, descripción, categoría): los frescos de la BD y, mientras llegan, los del menú. */
   products: Map<string, ProductRow>;
   unavailable: Set<string>;
   suggestions: ProductRow[];

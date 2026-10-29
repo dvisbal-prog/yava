@@ -24,11 +24,15 @@ export function FoodCart(p: CartViewProps) {
   const [editingNotes, setEditingNotes] = useState(false);
   const cardW = (Math.min(width, 600) - G * 2 - 12) / 2;
   const m = p.merchant;
-  // "Te puede gustar": dos complementos (los dos más económicos del menú, en el orden del menú), como en el diseño.
+  // "Te puede gustar": dos productos de las categorías que aún no están en la canasta, en el orden del menú
+  // (`p.suggestions` ya viene así); si no alcanzan, se completa con los más económicos del resto. Con S-CART
+  // (ceviche + limonada) da Patacones y Chips de plátano, como en el diseño.
   const complements = useMemo(() => {
-    const cheapest = new Set([...p.suggestions].sort((a, b) => a.price - b.price).slice(0, 2).map((s) => s.id));
-    return p.suggestions.filter((s) => cheapest.has(s.id));
-  }, [p.suggestions]);
+    const inCart = new Set(p.lines.map((l) => p.products.get(l.product_id)?.category_id).filter((c): c is string => Boolean(c)));
+    const fresh = p.suggestions.filter((s) => s.category_id && !inCart.has(s.category_id));
+    const rest = p.suggestions.filter((s) => !fresh.includes(s)).sort((a, b) => a.price - b.price);
+    return [...fresh, ...rest].slice(0, 2);
+  }, [p.lines, p.products, p.suggestions]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
