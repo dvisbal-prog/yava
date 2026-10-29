@@ -14,3 +14,7 @@ export * from "./Skeleton";
 export * from "./StatusPill";
 export * from "./KPI";
 export * from "./Logo";
+export * from "./IconButton";
+export * from "./BottomBar";
+export * from "./Sheet";
+export * from "./Segmented";

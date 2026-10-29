@@ -1,19 +1,22 @@
 import React, { useMemo } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, RefreshControl, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { Ionicons } from "@expo/vector-icons";
 import { colors, radius } from "@yava/shared";
 import type { MerchantCategory } from "@yava/shared";
-import { Screen, Text, Chip, Card, EmptyState } from "@/components/ui";
+import { Text, EmptyState, Skeleton } from "@/components/ui";
 import { useCart } from "@/store/cart";
 import { AddressHeader } from "@/components/customer/AddressHeader";
-import { SectionHeader } from "@/components/customer/SectionHeader";
-import { MerchantRow } from "@/components/customer/MerchantCard";
-import { ProductTile } from "@/components/customer/ProductRow";
-import { ErrorState, ListSkeleton, CardsSkeleton } from "@/components/customer/QueryState";
+import { ErrorState } from "@/components/customer/QueryState";
 import { CartBar } from "@/components/customer/CartBar";
-import { useNearbyMerchants, useProductsOfMerchants } from "@/features/customer";
+import { isProductAvailable } from "@/components/customer/ProductRow";
+import { CategoryTiles, type TileItem } from "@/components/customer/browse/CategoryTiles";
+import {
+  BrowseSection, MarketBanner, StoreCard, EssentialCard, PharmacyCategoryCard, PharmacyCard, FeaturedProductCard, splitUnit, type PharmacyCategory,
+} from "@/components/customer/browse/StoreBrowse";
+import { productImage, productDesignImage } from "@/lib/design-images";
+import { useNearbyMerchants, useProductsOfMerchants, useFavoriteIds, useToggleFavorite, useRequireAuth } from "@/features/customer";
 import type { ProductRow as ProductRowData, ProductCategoryRow, NearbyMerchant } from "@/features/customer";
 import { confirm } from "@/lib/dialog";
 
@@ -23,11 +26,12 @@ function norm(s: string): string {
     .replace(/[áàä]/g, "a").replace(/[éèë]/g, "e").replace(/[íìï]/g, "i").replace(/[óòö]/g, "o").replace(/[úùü]/g, "u").replace(/ñ/g, "n");
 }
 
-/** Palabras con las que cada chip reconoce las categorías (product_categories.name) de cada tienda. */
+/** Palabras con las que cada categoría (tile o tarjeta) reconoce las categorías (product_categories.name) de cada tienda. */
 const CHIP_KEYWORDS: Record<string, string[]> = {
   frutas: ["fruta"], verduras: ["verdura", "hortaliza"], lacteos: ["lacteo", "leche", "queso", "yogur"], despensa: ["despensa", "abarrote", "grano"], aseo: ["aseo", "limpieza"],
   "dolor y fiebre": ["dolor", "fiebre", "analgesico"], gripa: ["gripa", "gripe", "resfriado", "antigripal"], vitaminas: ["vitamina", "suplemento"],
   "cuidado personal": ["cuidado personal", "higiene"], bebes: ["bebe", "infantil", "panal"],
+  "proteccion solar": ["solar", "protector", "bloqueador"], "primeros auxilios": ["auxilio", "botiquin", "curita", "aposito", "antiseptico", "alcohol"],
 };
 
 /** ids de las categorías (de cualquier tienda) que corresponden a un chip. */
@@ -41,14 +45,28 @@ function categoryIdsForChip(chip: string, categories: ProductCategoryRow[]): Set
 const ESSENTIALS_SHOWN = 12;
 const ESSENTIALS_FETCH = 60;
 
-/** Plantilla de Mercado (25) y Farmacia (29): tiendas cercanas + "Lo esencial" con compra directa. */
-export function StoreCategoryScreen({ category, title, subtitle, notice, searchPlaceholder, chips }: {
-  category: Extract<MerchantCategory, "market" | "pharmacy">; title: string; subtitle: string; notice?: string; searchPlaceholder: string; chips: string[];
-}) {
+export type StoreCategoryConfig =
+  | { category: "market"; tiles: TileItem[]; banner: { title: string; subtitle: string } }
+  | { category: "pharmacy"; cards: PharmacyCategory[] };
+
+/**
+ * Plantilla de 25 · Mercado (tanda-04/25-mercado.png) y 29 · Farmacia (29-farmacia.png):
+ * - 25: dirección + bolsa, buscador, tiles con foto (Frutas, Verduras, Lácteos, Despensa), banner crema, "Tiendas cercanas"
+ *   (tarjetas con fachada) y "Lo esencial" (cajas blancas con "+").
+ * - 29: dirección + bolsa, buscador, 4 tarjetas pastel, "Farmacias cercanas" (fachada con insignia de tiempo),
+ *   separador y "Productos destacados".
+ * Tocar una categoría filtra los productos por las categorías de cada tienda; "+" agrega directo a la canasta.
+ */
+export function StoreCategoryScreen({ config, notice, searchPlaceholder }: { config: StoreCategoryConfig; notice?: string; searchPlaceholder: string }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const category: Extract<MerchantCategory, "market" | "pharmacy"> = config.category;
   const merchants = useNearbyMerchants(category);
   const ids = useMemo(() => (merchants.data ?? []).map((m) => m.id), [merchants.data]);
   const products = useProductsOfMerchants(ids, ESSENTIALS_FETCH);
+  const favIds = useFavoriteIds();
+  const toggleFav = useToggleFavorite();
+  const requireAuth = useRequireAuth();
   const addLine = useCart((s) => s.addLine);
   const replaceWith = useCart((s) => s.replaceWith);
   const [chip, setChip] = React.useState<string | null>(null);
@@ -75,55 +93,136 @@ export function StoreCategoryScreen({ category, title, subtitle, notice, searchP
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
+  function toggleFavorite(id: string) {
+    if (!requireAuth(category === "market" ? "/(customer)/market" : "/(customer)/pharmacy")) return;
+    toggleFav.mutate({ merchantId: id, isFavorite: (favIds.data ?? []).includes(id) });
+  }
+
   const openMerchant = (id: string) => router.push(`/(customer)/merchant/${id}` as never);
+  const openProduct = (id: string) => router.push(`/(customer)/product/${id}` as never);
+  const pick = (key: string) => setChip(chip === key ? null : key);
+  const market = config.category === "market";
+
+  const storesBlock = merchants.isLoading ? (
+    <View style={[styles.row, { paddingLeft: 17.5, gap: 6.1 }]}>
+      {[0, 1].map((i) => <Skeleton key={i} width={market ? 183.8 : 177.3} height={market ? 172 : 172} style={{ borderRadius: radius.r16 }} />)}
+    </View>
+  ) : merchants.error ? (
+    <ErrorState error={merchants.error} onRetry={() => { void merchants.refetch(); }} compact />
+  ) : !merchants.data?.length ? (
+    <EmptyState compact icon="storefront-outline" title={market ? "Aún no hay tiendas cerca" : "Aún no hay farmacias cerca"} body="Pronto llegaremos a tu zona con más opciones." />
+  ) : (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={market ? styles.storesMarket : styles.storesPharmacy}>
+      {merchants.data.map((m) => market ? (
+        <StoreCard key={m.id} m={m} onPress={() => openMerchant(m.id)} favorite={(favIds.data ?? []).includes(m.id)} onFavorite={() => toggleFavorite(m.id)} />
+      ) : (
+        <PharmacyCard key={m.id} m={m} onPress={() => openMerchant(m.id)} />
+      ))}
+    </ScrollView>
+  );
+
+  const productsBlock = products.isLoading ? (
+    <View style={[styles.row, { paddingLeft: 17.5, gap: 7 }]}>
+      {[0, 1, 2].map((i) => <Skeleton key={i} width={market ? 114.5 : 117.8} height={market ? 101 : 163.5} style={{ borderRadius: radius.r14 }} />)}
+    </View>
+  ) : products.error ? (
+    <ErrorState error={products.error} onRetry={() => { void products.refetch(); }} compact />
+  ) : !filteredProducts.length ? (
+    <Text style={styles.noProducts}>{chip ? `No encontramos productos para "${chip}".` : "Aún no hay productos disponibles."}</Text>
+  ) : (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={market ? styles.essList : styles.featList}>
+      {filteredProducts.map((p) => {
+        const m = merchants.data?.find((x) => x.id === p.merchant_id);
+        const available = isProductAvailable(p);
+        const onAdd = m && m.is_open && available ? () => addDirect(p, m) : undefined;
+        if (market) {
+          const { name, unit } = splitUnit(p.name);
+          return <EssentialCard key={p.id} name={name} unit={unit} price={p.price} image={productImage(p, "card")} disabled={!available} onPress={() => openProduct(p.id)} onAdd={onAdd} />;
+        }
+        // Las fotos de diseño de 29 son recortes de la tarjeta (sobre blanco); las de la BD van centradas.
+        const designWhite = productDesignImage(p.name, "white");
+        return (
+          <FeaturedProductCard key={p.id} name={p.name} price={p.price} image={designWhite ?? productImage(p)} disabled={!available}
+            imageFrame={designWhite ? { width: 109, height: 98.8, left: 6, top: 4.2 } : { width: 103, height: 92, left: 7.4, top: 7 }}
+            onPress={() => openProduct(p.id)} onAdd={onAdd} />
+        );
+      })}
+    </ScrollView>
+  );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.white }}>
-      <Screen padded={false} refreshing={merchants.isRefetching} onRefresh={() => { void merchants.refetch(); void products.refetch(); }}>
-        <AddressHeader back searchPlaceholder={searchPlaceholder} onSearch={() => router.push(`/(customer)/search?category=${category}` as never)} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-          <Chip label="Todo" selected={chip === null} onPress={() => setChip(null)} />
-          {chips.map((c) => <Chip key={c} label={c} selected={chip === c} onPress={() => setChip(chip === c ? null : c)} />)}
-        </ScrollView>
-        <View style={{ paddingHorizontal: 16 }}>
-          <View style={{ backgroundColor: category === "market" ? colors.greenSoft : colors.redSoft, borderRadius: radius.lg, padding: 16, flexDirection: "row", alignItems: "center" }}>
-            <View style={{ flex: 1 }}>
-              <Text variant="title">{title}</Text>
-              <Text tone="muted" style={{ marginTop: 4 }}>{subtitle}</Text>
+    <View style={styles.root}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 90 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={merchants.isRefetching} onRefresh={() => { void merchants.refetch(); void products.refetch(); }} tintColor={colors.blue} />}
+      >
+        <AddressHeader searchPlaceholder={searchPlaceholder} onSearch={() => router.push(`/(customer)/search?category=${category}` as never)} />
+
+        {config.category === "market" ? (
+          <>
+            <CategoryTiles items={config.tiles} selected={chip} onSelect={pick} height={83.1} radius={14} gap={7.4} labelSize={10.8} labelGap={3.7} style={styles.tiles} />
+            <View style={styles.gutter}>
+              <MarketBanner title={config.banner.title} subtitle={config.banner.subtitle} style={{ marginTop: 11.9 }}
+                onPress={ids[0] ? () => openMerchant(ids[0]) : undefined} />
+              <BrowseSection title="Tiendas cercanas" actionTitle="Ver todas" size={17.1} style={{ marginTop: 18.4 }}
+                onAction={() => router.push(`/(customer)/restaurants?category=${category}` as never)} />
             </View>
-            <Ionicons name={category === "market" ? "basket-outline" : "medkit-outline"} size={44} color={category === "market" ? colors.green : colors.red} />
-          </View>
-          {notice ? (
-            <Card style={{ marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: colors.gray50 }}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.gray500} />
-              <Text variant="caption" tone="muted" style={{ marginLeft: 10, flex: 1 }}>{notice}</Text>
-            </Card>
-          ) : null}
+            <View style={{ marginTop: 2.7 }}>{storesBlock}</View>
+            {ids.length ? (
+              <>
+                <View style={styles.gutter}>
+                  <BrowseSection title="Lo esencial" size={17.1} style={{ marginTop: 18.1 }} onAction={ids[0] ? () => openMerchant(ids[0]) : undefined} />
+                </View>
+                <View style={{ marginTop: 4.2 }}>{productsBlock}</View>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <View style={[styles.gutter, styles.grid]}>
+              {config.cards.map((c) => (
+                <View key={c.key} style={styles.cell}>
+                  <PharmacyCategoryCard item={c} selected={chip === c.key} onPress={() => pick(c.key)} />
+                </View>
+              ))}
+            </View>
+            <View style={styles.gutter}>
+              <BrowseSection title="Farmacias cercanas" actionTitle="Ver todas" size={16.3} style={{ marginTop: 20.4 }}
+                onAction={() => router.push(`/(customer)/restaurants?category=${category}` as never)} />
+            </View>
+            <View style={{ marginTop: 9.7 }}>{storesBlock}</View>
+            {ids.length ? (
+              <>
+                <View style={[styles.sep, { marginTop: 14.9 }]} />
+                <View style={styles.gutter}>
+                  <BrowseSection title="Productos destacados" size={15.6} style={{ marginTop: 11.8 }} onAction={ids[0] ? () => openMerchant(ids[0]) : undefined} />
+                </View>
+                <View style={{ marginTop: 8.2 }}>{productsBlock}</View>
+              </>
+            ) : null}
+          </>
+        )}
 
-          <SectionHeader title="Tiendas cercanas" style={{ marginTop: 24 }} onAction={() => router.push(`/(customer)/restaurants?category=${category}` as never)} actionTitle="Ver todas" />
-          {merchants.isLoading ? <ListSkeleton rows={2} /> : merchants.error ? <ErrorState error={merchants.error} onRetry={() => { void merchants.refetch(); }} compact /> : !merchants.data?.length ? (
-            <EmptyState icon="storefront-outline" title="Aún no hay tiendas cerca" body="Pronto llegaremos a tu zona con más opciones." />
-          ) : merchants.data.map((m) => <MerchantRow key={m.id} m={m} onPress={() => openMerchant(m.id)} />)}
-
-          {ids.length ? (
-            <>
-              <SectionHeader title="Lo esencial" style={{ marginTop: 24 }} onAction={ids[0] ? () => openMerchant(ids[0]) : undefined} />
-              {products.isLoading ? <CardsSkeleton count={2} width={140} /> : products.error ? <ErrorState error={products.error} onRetry={() => { void products.refetch(); }} compact /> : !filteredProducts.length ? (
-                <Text tone="muted">No encontramos productos para "{chip}".</Text>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {filteredProducts.map((p) => {
-                    const m = merchants.data?.find((x) => x.id === p.merchant_id);
-                    return <ProductTile key={p.id} p={p} merchantName={m?.name} onPress={() => router.push(`/(customer)/product/${p.id}` as never)} onAdd={m && m.is_open ? () => addDirect(p, m) : undefined} />;
-                  })}
-                </ScrollView>
-              )}
-            </>
-          ) : null}
-          <View style={{ height: 80 }} />
-        </View>
-      </Screen>
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+      </ScrollView>
       <CartBar />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.white },
+  gutter: { paddingHorizontal: 17.5 },
+  row: { flexDirection: "row" },
+  tiles: { marginTop: 7.8, marginLeft: 17.1, marginRight: 17.5 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 6.5, marginTop: 11.8 },
+  cell: { width: "48.9%" },
+  storesMarket: { paddingHorizontal: 17.5, paddingVertical: 4, gap: 6.1 },
+  storesPharmacy: { paddingHorizontal: 18, gap: 9.3 },
+  essList: { paddingHorizontal: 18, paddingTop: 4, paddingBottom: 8, gap: 7 },
+  featList: { paddingHorizontal: 17.1, paddingBottom: 8, gap: 5.8 },
+  sep: { height: 1, backgroundColor: "#E9ECF0", marginHorizontal: 17.5 },
+  noProducts: { fontSize: 12, lineHeight: 16, color: colors.textTertiary, paddingHorizontal: 17.5, marginTop: 6 },
+  notice: { fontSize: 10.5, lineHeight: 14, color: colors.textPlaceholder, paddingHorizontal: 17.5, marginTop: 14 },
+});

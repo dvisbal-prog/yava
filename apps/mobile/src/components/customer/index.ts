@@ -13,3 +13,6 @@ export * from "./StarRating";
 export * from "./PriceBreakdown";
 export * from "./RadioRow";
 export * from "./Avatar";
+export * from "./FloatingTabBar";
+export * from "./AddButton";
+export * from "./PhotoTile";

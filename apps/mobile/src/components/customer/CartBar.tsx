@@ -1,32 +1,47 @@
 import React from "react";
-import { View, Pressable, StyleSheet, Platform } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, formatCOP } from "@yava/shared";
+import { colors, shadows, spacing, formatCOP } from "@yava/shared";
 import { Text } from "@/components/ui";
 import { useCart } from "@/store/cart";
 
-/** Botón flotante "Ver canasta · N · $X" (visible cuando hay productos). */
+/**
+ * Botón flotante "Ver canasta" (visible cuando hay productos), con el lenguaje de los CTA del diseño (C15b):
+ * píldora azul de 52 pt con el conteo en círculo blanco, texto centrado y el subtotal con chevron a la derecha.
+ * Con `merchantId` solo aparece si la canasta es de ese comercio.
+ */
 export function CartBar({ merchantId }: { merchantId?: string }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const lines = useCart((s) => s.lines);
   const merchant = useCart((s) => s.merchant);
   const count = lines.reduce((a, l) => a + l.qty, 0);
   const subtotal = useCart((s) => s.subtotal());
   if (!count || (merchantId && merchant && merchant.id !== merchantId)) return null;
   return (
-    <View style={styles.wrap} pointerEvents="box-none">
-      <Pressable onPress={() => router.push("/(customer)/cart" as never)} style={({ pressed }) => [styles.bar, { opacity: pressed ? 0.9 : 1 }]}>
-        <View style={styles.count}><Text variant="caption" style={{ color: colors.blue, fontWeight: "700" }}>{count}</Text></View>
-        <Text variant="bodyStrong" tone="inverse" style={{ flex: 1, textAlign: "center" }}>Ver canasta</Text>
-        <Text variant="bodyStrong" tone="inverse">{formatCOP(subtotal)}</Text>
-        <Ionicons name="chevron-forward" size={18} color={colors.white} style={{ marginLeft: 4 }} />
+    <View style={[styles.wrap, { bottom: Math.max(insets.bottom + 6, 16) }]} pointerEvents="box-none">
+      <Pressable onPress={() => router.push("/(customer)/cart" as never)} accessibilityRole="button"
+        accessibilityLabel={`Ver canasta, ${count} ${count === 1 ? "producto" : "productos"}, ${formatCOP(subtotal)}`}
+        style={({ pressed }) => [styles.bar, shadows.float, pressed ? { backgroundColor: colors.blueDark } : null]}>
+        <View style={styles.count}><Text style={styles.countText}>{count}</Text></View>
+        <Text style={styles.label}>Ver canasta</Text>
+        <View style={styles.right}>
+          <Text style={styles.total}>{formatCOP(subtotal)}</Text>
+          <Ionicons name="chevron-forward" size={17} color={colors.white} style={{ marginLeft: 4 }} />
+        </View>
       </Pressable>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 16, right: 16, bottom: Platform.OS === "ios" ? 28 : 16 },
-  bar: { flexDirection: "row", alignItems: "center", backgroundColor: colors.blue, borderRadius: radius.lg, paddingHorizontal: 14, height: 56, shadowColor: colors.black, shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
-  count: { minWidth: 28, height: 28, borderRadius: 14, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
+  wrap: { position: "absolute", left: spacing.gutter, right: spacing.gutter },
+  bar: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 26, backgroundColor: colors.blue, paddingHorizontal: 12 },
+  count: { position: "absolute", left: 12, minWidth: 28, height: 28, borderRadius: 14, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", paddingHorizontal: 7 },
+  countText: { fontSize: 13.5, lineHeight: 17, fontWeight: "700", color: colors.blue },
+  label: { fontSize: 15.5, lineHeight: 20, fontWeight: "600", color: colors.white },
+  right: { position: "absolute", right: 16, flexDirection: "row", alignItems: "center" },
+  total: { fontSize: 14.5, lineHeight: 19, fontWeight: "600", color: colors.white },
 });

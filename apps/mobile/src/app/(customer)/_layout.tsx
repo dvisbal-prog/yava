@@ -4,11 +4,12 @@ import { Stack, useRouter } from "expo-router";
 import { colors } from "@yava/shared";
 import { useAuth } from "@/store/auth";
 import { useNavIntent } from "@/features/customer/stores";
-import { OfflineBanner } from "@/components/customer/OfflineBanner";
+import { OfflineScreen } from "@/components/customer/OfflineBanner";
 
 /**
  * Grupo de cliente: Stack con las pestañas anidadas en (tabs) y el resto de pantallas
- * (comercio, producto, canasta, pedidos…) como pantallas apiladas. Incluye el banner "Sin conexión" (48).
+ * (comercio, producto, canasta, pedidos…) como pantallas apiladas. Encima va la pantalla completa "Sin conexión" (48),
+ * que solo aparece cuando falla la red.
  */
 export default function CustomerLayout() {
   const router = useRouter();
@@ -32,10 +33,10 @@ export default function CustomerLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.white }}>
-      <OfflineBanner />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.white } }}>
         <Stack.Screen name="(tabs)" />
       </Stack>
+      <OfflineScreen />
     </View>
   );
 }

@@ -22,7 +22,7 @@ export function usePushNotifications() {
         if (existing !== "granted") status = (await Notifications.requestPermissionsAsync()).status;
         if (status !== "granted") return;
         if (Platform.OS === "android") {
-          await Notifications.setNotificationChannelAsync("default", { name: "Pedidos", importance: Notifications.AndroidImportance.MAX, vibrationPattern: [0, 250, 250, 250], lightColor: "#1E5EFF" });
+          await Notifications.setNotificationChannelAsync("default", { name: "Pedidos", importance: Notifications.AndroidImportance.MAX, vibrationPattern: [0, 250, 250, 250], lightColor: "#0045AB" });
         }
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         if (!projectId || String(projectId).startsWith("REEMPLAZAR")) return;

@@ -5,12 +5,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
-import { View, ActivityIndicator } from "react-native";
 import { queryClient } from "@/lib/query";
 import { useAuth, useEffectiveRole } from "@/store/auth";
 import { useAccess } from "@/store/access";
 import { colors } from "@yava/shared";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { Apertura } from "@/components/customer/auth/Apertura";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -49,7 +49,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [role, accessReady, seenAccess, segments, router]);
 
   if (role === "loading" || !accessReady) {
-    return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.white }}><ActivityIndicator color={colors.blue} /></View>;
+    // 01 · Apertura: logo centrado mientras carga la sesión (justo después del splash nativo).
+    return <Apertura />;
   }
   return <>{children}</>;
 }

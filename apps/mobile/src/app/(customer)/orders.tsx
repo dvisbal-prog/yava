@@ -1,20 +1,27 @@
 import React, { useMemo, useState } from "react";
-import { View, Pressable, StyleSheet } from "react-native";
+import { View, ScrollView, RefreshControl, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { colors, radius } from "@yava/shared";
-import { Screen, Header, Text, EmptyState } from "@/components/ui";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { colors } from "@yava/shared";
+import { EmptyState, Skeleton } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { useCart } from "@/store/cart";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
 import { notify, confirm } from "@/lib/dialog";
-import { OrderCard, ErrorState, ListSkeleton } from "@/components/customer";
+import { OrderCard, ErrorState } from "@/components/customer";
+import { NavBar } from "@/components/customer/account/kit";
+import { UnderlineTabs } from "@/components/customer/account/parts";
 import { useMyOrders, splitOrders, loginHref, type OrderSummaryRow, type OrderItemRow, type MerchantPublic } from "@/features/customer";
 import { useRealtimeOrders } from "@/hooks/useRealtimeOrder";
 
-/** Pantalla 36 · Mis pedidos (En curso / Historial). */
+/**
+ * Pantalla 36 · Mis pedidos (tanda-05/36-mis-pedidos.png): chevron + "Mis pedidos", pestañas subrayadas
+ * "En curso / Historial" y tarjetas C20b (miniatura, estado, fecha, total, "Ver detalle" + "Volver a pedir").
+ */
 export default function Orders() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const session = useAuth((s) => s.session);
   const orders = useMyOrders();
   useRealtimeOrders(Boolean(session));
@@ -51,33 +58,41 @@ export default function Orders() {
     }
   }
 
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(customer)/account" as never));
+
   if (!session) {
-    return <Screen><Header title="Mis pedidos" /><EmptyState icon="receipt-outline" title="Inicia sesión para ver tus pedidos" actionTitle="Iniciar sesión" onAction={() => router.push(loginHref("/(customer)/orders") as never)} /></Screen>;
+    return (
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        <NavBar title="Mis pedidos" onBack={goBack} />
+        <EmptyState icon="receipt-outline" title="Inicia sesión para ver tus pedidos" actionTitle="Iniciar sesión" onAction={() => router.push(loginHref("/(customer)/orders") as never)} />
+      </View>
+    );
   }
 
   return (
-    <Screen refreshing={orders.isRefetching} onRefresh={() => { void orders.refetch(); }}>
-      <Header title="Mis pedidos" onBack={() => (router.canGoBack() ? router.back() : router.replace("/(customer)/account" as never))} />
-      <View style={styles.tabs}>
-        {(["active", "past"] as const).map((t) => (
-          <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabActive]}>
-            <Text variant="bodyStrong" style={{ color: tab === t ? colors.white : colors.gray700 }}>{t === "active" ? `En curso${active.length ? ` · ${active.length}` : ""}` : "Historial"}</Text>
-          </Pressable>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <NavBar title="Mis pedidos" onBack={goBack} />
+      <UnderlineTabs options={[{ value: "active", label: `En curso${active.length ? ` · ${active.length}` : ""}` }, { value: "past", label: "Historial" }]}
+        value={tab} onChange={setTab} height={35.1} labelTop={8.6} activeSize={12.7} inactiveSize={13.85} weights={[192.2, 172.1]} style={styles.tabs} />
+      <ScrollView contentContainerStyle={[styles.list, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={orders.isRefetching} onRefresh={() => { void orders.refetch(); }} tintColor={colors.blue} />}>
+        {orders.isLoading ? (
+          [0, 1, 2].map((i) => <Skeleton key={i} height={155} style={{ borderRadius: 18 }} />)
+        ) : orders.error ? <ErrorState error={orders.error} onRetry={() => { void orders.refetch(); }} /> : !list.length ? (
+          tab === "active"
+            ? <EmptyState icon="bicycle-outline" title="No tienes pedidos en curso" body="Cuando pidas algo, podrás seguirlo aquí en tiempo real." actionTitle="Pedir ahora" onAction={() => router.replace("/(customer)" as never)} />
+            : <EmptyState icon="receipt-outline" title="Aún no tienes pedidos anteriores" body="Tu historial aparecerá aquí." />
+        ) : list.map((o) => (
+          <OrderCard key={o.id} o={o} onPress={() => router.push(o.status === "delivered" ? `/(customer)/order/${o.id}/delivered` as never : `/(customer)/order/${o.id}` as never)}
+            onReorder={o.merchant_id ? () => reorder(o) : undefined} onRate={() => router.push(`/(customer)/order/${o.id}/rate` as never)} />
         ))}
-      </View>
-      {orders.isLoading ? <ListSkeleton rows={3} height={56} /> : orders.error ? <ErrorState error={orders.error} onRetry={() => { void orders.refetch(); }} /> : !list.length ? (
-        tab === "active"
-          ? <EmptyState icon="bicycle-outline" title="No tienes pedidos en curso" body="Cuando pidas algo, podrás seguirlo aquí en tiempo real." actionTitle="Pedir ahora" onAction={() => router.replace("/(customer)" as never)} />
-          : <EmptyState icon="receipt-outline" title="Aún no tienes pedidos anteriores" body="Tu historial aparecerá aquí." />
-      ) : list.map((o) => (
-        <OrderCard key={o.id} o={o} onPress={() => router.push(o.status === "delivered" ? `/(customer)/order/${o.id}/delivered` as never : `/(customer)/order/${o.id}` as never)}
-          onReorder={o.merchant_id ? () => reorder(o) : undefined} onRate={() => router.push(`/(customer)/order/${o.id}/rate` as never)} />
-      ))}
-    </Screen>
+      </ScrollView>
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
-  tabs: { flexDirection: "row", backgroundColor: colors.gray100, borderRadius: radius.pill, padding: 4, marginTop: 8, marginBottom: 16 },
-  tab: { flex: 1, height: 38, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
-  tabActive: { backgroundColor: colors.blue },
+  root: { flex: 1, backgroundColor: colors.white },
+  tabs: { marginLeft: 14.8, marginRight: 13.9 },
+  list: { paddingHorizontal: 13.4, paddingTop: 11.6, gap: 11.2 },
 });

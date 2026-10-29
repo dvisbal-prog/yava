@@ -1,16 +1,18 @@
 import React, { useState } from "react";
-import { View, Pressable, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@yava/shared";
-import { Screen, Header, Text, Input, Button } from "@/components/ui";
+import { Text } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
 import { useNavIntent } from "@/features/customer/stores";
+import { AuthScreen } from "@/components/customer/auth/AuthScreen";
+import { AuthBack } from "@/components/customer/auth/AuthBack";
+import { Field, Checkbox, AuthButton, LOOK_PROFILE } from "@/components/customer/auth/Field";
 import { isAddressRoute, isLocationRoute } from "./AddressForm";
 
-/** Pantalla 05 · Completa tus datos. Se usa desde (auth) y desde (customer). */
+/** Pantalla 05 · Completa tus datos. Se usa desde (auth) y desde (customer). Medidas de tanda-01/05-datos-personales.png. */
 export function PersonalDataForm({ group }: { group: "auth" | "customer" }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string }>();
@@ -54,36 +56,38 @@ export function PersonalDataForm({ group }: { group: "auth" | "customer" }) {
   }
 
   return (
-    <Screen footer={
-      <View>
-        <Button title="Guardar y continuar" onPress={save} loading={saving} />
-        <Text variant="caption" tone="muted" style={{ textAlign: "center", marginTop: 10 }}>Puedes editar tus datos desde tu cuenta.</Text>
-      </View>
-    }>
-      <Header back={router.canGoBack()} />
-      <Text variant="display" style={{ marginTop: 8 }}>Completa tus datos</Text>
-      <Text tone="muted" style={{ marginTop: 6, marginBottom: 24 }}>Así sabremos quién recibe el pedido.</Text>
-      <Input label="Nombre" value={firstName} onChangeText={setFirstName} placeholder="María" autoCapitalize="words" textContentType="givenName" />
-      <Input label="Apellidos" value={lastName} onChangeText={setLastName} placeholder="Pérez" autoCapitalize="words" textContentType="familyName" />
-      <Input label="Correo electrónico" value={email} onChangeText={setEmail} placeholder="maria@example.com" keyboardType="email-address" autoCapitalize="none" textContentType="emailAddress" error={error} />
-      <Pressable
-        onPress={() => setNews((v) => !v)}
-        style={styles.check}
-        hitSlop={6}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: news }}
-      >
-        <View style={[styles.box, news && styles.boxOn]}>
-          {news ? <Ionicons name="checkmark" size={16} color={colors.white} /> : null}
-        </View>
-        <Text style={{ flex: 1 }}>Quiero recibir novedades y ofertas</Text>
-      </Pressable>
-    </Screen>
+    <AuthScreen
+      footerStyle={styles.footer}
+      bottomGap={21}
+      footer={
+        <>
+          <AuthButton title="Guardar y continuar" onPress={save} loading={saving} height={46.6} radius={10.5} color="#003E94" textStyle={styles.ctaText} />
+          <Text style={styles.note}>Puedes editar tus datos desde tu cuenta.</Text>
+        </>
+      }
+    >
+      <AuthBack plain iconSize={23.5} stroke={30} style={styles.back} />
+      <Text variant="h1" style={styles.title}>Completa tus datos</Text>
+      <Text tone="secondary" style={styles.subtitle}>Así sabremos quién recibe el pedido.</Text>
+
+      <Field look={LOOK_PROFILE} label="Nombre" containerStyle={styles.first} value={firstName} onChangeText={setFirstName} placeholder="María" autoCapitalize="words" textContentType="givenName" autoComplete="given-name" />
+      <Field look={LOOK_PROFILE} label="Apellidos" containerStyle={styles.next} value={lastName} onChangeText={setLastName} placeholder="Pérez" autoCapitalize="words" textContentType="familyName" autoComplete="family-name" />
+      <Field look={LOOK_PROFILE} label="Correo electrónico" containerStyle={styles.next} value={email} onChangeText={setEmail} placeholder="maria@example.com" keyboardType="email-address" autoCapitalize="none" textContentType="emailAddress" autoComplete="email" error={error} />
+
+      <Checkbox checked={news} onToggle={() => setNews((v) => !v)} label="Quiero recibir novedades y ofertas" size={21.7} radius={6} style={styles.check} labelStyle={styles.checkLabel} />
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  check: { flexDirection: "row", alignItems: "center", paddingVertical: 8, marginTop: 4 },
-  box: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.gray300, alignItems: "center", justifyContent: "center", marginRight: 12, backgroundColor: colors.white },
-  boxOn: { backgroundColor: colors.blue, borderColor: colors.blue },
+  back: { marginTop: 10.1, marginLeft: 12.2 },
+  title: { marginTop: 31, marginHorizontal: 19.4 },
+  subtitle: { fontSize: 16.2, lineHeight: 21, letterSpacing: -0.36, marginTop: 3.2, marginHorizontal: 19.4 },
+  first: { marginTop: 27, marginHorizontal: 19.4 },
+  next: { marginTop: 19.1, marginHorizontal: 19.4 },
+  check: { marginTop: 31.5, marginHorizontal: 19.4 },
+  checkLabel: { fontSize: 14, lineHeight: 20, letterSpacing: -0.42, marginLeft: 14.8 },
+  footer: { paddingHorizontal: 18.9 },
+  ctaText: { fontSize: 15.2, lineHeight: 20, fontWeight: "600", letterSpacing: -0.45 },
+  note: { fontSize: 11.7, lineHeight: 16, letterSpacing: -0.38, color: colors.textTertiary, textAlign: "center", marginTop: 12.3 },
 });

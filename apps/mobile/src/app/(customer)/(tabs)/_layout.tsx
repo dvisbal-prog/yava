@@ -1,28 +1,28 @@
 import React from "react";
 import { Tabs } from "expo-router/js-tabs";
-import { Ionicons } from "@expo/vector-icons";
-import type { ColorValue } from "react-native";
 import { colors } from "@yava/shared";
+import { ScreenBottomInset } from "@/components/ui";
+import { FloatingTabBar, useTabBarSpace } from "@/components/customer/FloatingTabBar";
 
-type Icon = keyof typeof Ionicons.glyphMap;
-function icon(active: Icon, inactive: Icon) {
-  return ({ color, focused, size }: { color: ColorValue; focused: boolean; size: number }) => <Ionicons name={focused ? active : inactive} size={size} color={typeof color === "string" ? color : focused ? colors.blue : colors.gray500} />;
-}
-
-/** Pestañas inferiores: Inicio · Ofertas · Favoritos · Cuenta. */
+/**
+ * Pestañas del cliente: Inicio · Ofertas · Favoritos · Cuenta, con la barra flotante del diseño (C21)
+ * y el botón de búsqueda circular a la derecha. El contenido de cada pestaña pasa por detrás de la barra:
+ * `Screen` agrega solo el espacio inferior (vía `ScreenBottomInset`); las pantallas con ScrollView propio
+ * usan `useTabBarSpace()`.
+ */
 export default function TabsLayout() {
+  const tabSpace = useTabBarSpace();
   return (
-    <Tabs screenOptions={{
-      headerShown: false,
-      tabBarActiveTintColor: colors.blue,
-      tabBarInactiveTintColor: colors.gray500,
-      tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-      tabBarStyle: { borderTopColor: colors.gray200, backgroundColor: colors.white },
-    }}>
-      <Tabs.Screen name="index" options={{ title: "Inicio", tabBarIcon: icon("home", "home-outline") }} />
-      <Tabs.Screen name="offers" options={{ title: "Ofertas", tabBarIcon: icon("pricetag", "pricetag-outline") }} />
-      <Tabs.Screen name="favorites" options={{ title: "Favoritos", tabBarIcon: icon("heart", "heart-outline") }} />
-      <Tabs.Screen name="account" options={{ title: "Cuenta", tabBarIcon: icon("person", "person-outline") }} />
-    </Tabs>
+    <ScreenBottomInset.Provider value={tabSpace}>
+      <Tabs
+        tabBar={(props) => <FloatingTabBar {...props} />}
+        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.white } }}
+      >
+        <Tabs.Screen name="index" options={{ title: "Inicio" }} />
+        <Tabs.Screen name="offers" options={{ title: "Ofertas" }} />
+        <Tabs.Screen name="favorites" options={{ title: "Favoritos" }} />
+        <Tabs.Screen name="account" options={{ title: "Cuenta" }} />
+      </Tabs>
+    </ScreenBottomInset.Provider>
   );
 }

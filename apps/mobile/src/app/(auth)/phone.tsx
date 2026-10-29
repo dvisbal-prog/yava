@@ -1,8 +1,14 @@
 import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { colors, radius } from "@yava/shared";
-import { Screen, Header, Text, Input, Button } from "@/components/ui";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import { colors } from "@yava/shared";
+import { Text } from "@/components/ui";
+import { AuthScreen } from "@/components/customer/auth/AuthScreen";
+import { AuthBack } from "@/components/customer/auth/AuthBack";
+import { Field, AuthButton, LOOK_PHONE } from "@/components/customer/auth/Field";
+import { designImages } from "@/lib/design-images";
 import { sendPhoneOtp, normalizePhone } from "@/lib/auth-actions";
 import { errorMessage } from "@/lib/errors";
 import { maskPhone } from "@/features/customer/helpers";
@@ -13,7 +19,7 @@ function phoneDigits(text: string): string {
   return (d.length > 10 && d.startsWith("57") ? d.slice(2) : d).slice(0, 10);
 }
 
-/** Pantalla 03 · Tu número de celular. */
+/** Pantalla 03 · Tu número de celular (medidas de tanda-01/03-celular.png). */
 export default function Phone() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string }>();
@@ -37,17 +43,26 @@ export default function Phone() {
   }
 
   return (
-    <Screen footer={<Button title="Continuar" onPress={submit} loading={busy} disabled={digits.length !== 10} />}>
-      <Header back />
-      <Text variant="display" style={{ marginTop: 8 }}>Tu número de celular</Text>
-      <Text tone="muted" style={{ marginTop: 6, marginBottom: 24 }}>Te enviaremos un código para entrar o crear tu cuenta.</Text>
-      <Text variant="caption" tone="muted" style={{ marginBottom: 6 }}>País</Text>
-      <View style={styles.country} accessibilityLabel="País: Colombia, +57">
-        <ColombiaFlag />
-        <Text style={{ marginLeft: 12 }}>Colombia (+57)</Text>
+    <AuthScreen
+      footerStyle={styles.footer}
+      footer={<AuthButton title="Continuar" onPress={submit} loading={busy} disabled={digits.length !== 10} height={53.6} radius={14} color="#0043A9" textStyle={styles.ctaText} />}
+    >
+      <AuthBack size={37.2} color="#EEEEF3" iconSize={27} stroke={36} iconShift={{ x: -1.6, y: 0.5 }} style={styles.back} />
+      <Text variant="h1" style={styles.title}>Tu número de celular</Text>
+      <Text tone="secondary" style={styles.subtitle}>Te enviaremos un código para entrar o crear tu cuenta.</Text>
+
+      <Text style={[LOOK_PHONE.label, styles.countryLabel]}>País</Text>
+      <View style={styles.country} accessible accessibilityLabel="País: Colombia, +57">
+        <Image source={designImages.banderaColombia} style={styles.flag} contentFit="contain" />
+        <Text style={styles.countryText}>Colombia (+57)</Text>
+        <Ionicons name="chevron-down" size={18.3} color={colors.ink} />
       </View>
-      <Input
+
+      <Field
+        look={LOOK_PHONE}
         label="Celular"
+        containerStyle={styles.phoneField}
+        style={styles.phoneInput}
         value={maskPhone(digits)}
         onChangeText={(t) => { setDigits(phoneDigits(t)); if (error) setError(null); }}
         maxLength={12}
@@ -59,24 +74,25 @@ export default function Phone() {
         error={error}
         hint="Usaremos este número para tu entrega."
         onSubmitEditing={submit}
+        boxHeight={51.3}
       />
-      <View style={{ height: 8 }} />
-    </Screen>
-  );
-}
-
-/** Bandera de Colombia (amarillo 1/2, azul 1/4, rojo 1/4). */
-function ColombiaFlag() {
-  return (
-    <View style={styles.flag}>
-      <View style={{ flex: 2, backgroundColor: "#FCD116" }} />
-      <View style={{ flex: 1, backgroundColor: "#003893" }} />
-      <View style={{ flex: 1, backgroundColor: "#CE1126" }} />
-    </View>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  country: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.gray200, borderRadius: radius.md, paddingHorizontal: 12, minHeight: 48, marginBottom: 14, backgroundColor: colors.white },
-  flag: { width: 28, height: 20, borderRadius: 3, overflow: "hidden" },
+  back: { marginTop: 10.6, marginLeft: 19.4 },
+  title: { fontSize: 28.5, lineHeight: 34, marginTop: 62.9, marginHorizontal: 19.4 },
+  subtitle: { fontSize: 15, lineHeight: 20, letterSpacing: -0.38, marginTop: 6.8, marginLeft: 19.4, marginRight: 17 },
+  countryLabel: { marginTop: 39.9, marginHorizontal: 20.8, marginBottom: 6.8 },
+  country: {
+    flexDirection: "row", alignItems: "center", height: 48.5, marginHorizontal: 19.4, borderRadius: 12, borderWidth: 1, borderColor: LOOK_PHONE.borderColor,
+    paddingLeft: 14.2, paddingRight: 9.3, backgroundColor: colors.white,
+  },
+  flag: { width: 27.3, height: 20.8 },
+  countryText: { flex: 1, fontSize: 17, lineHeight: 22, letterSpacing: -0.42, color: colors.ink, marginLeft: 12.9 },
+  phoneField: { marginTop: 28, marginHorizontal: 18.9 },
+  phoneInput: { fontSize: 18.2, letterSpacing: 0.7, marginLeft: -0.4 },
+  footer: { paddingHorizontal: 18.9 },
+  ctaText: { fontSize: 18.5, lineHeight: 24, fontWeight: "500", letterSpacing: -0.3 },
 });

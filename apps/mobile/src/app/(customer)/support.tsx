@@ -1,20 +1,69 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { View, FlatList, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, formatTime, formatCOP, ORDER_STATUS_LABEL } from "@yava/shared";
-import { Header, Text, EmptyState, Button } from "@/components/ui";
+import { colors, formatTime, formatCOP, ORDER_STATUS_LABEL } from "@yava/shared";
+import { Text, EmptyState, Skeleton } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { supabase } from "@/lib/supabase";
 import { errorMessage } from "@/lib/errors";
-import { ErrorState, ListSkeleton } from "@/components/customer";
+import { ErrorState } from "@/components/customer";
+import { NavBar, RowChevron, ft } from "@/components/customer/account/kit";
+import { LineIcon } from "@/components/customer/account/icons";
+import { supportOrderPhoto } from "@/components/customer/account/photos";
 import { useMyOpenSupportCase, useSupportMessages, useOrder, loginHref, type SupportCaseRow, type SupportMessageRow } from "@/features/customer";
 
-/** Pantalla 40 · Chat con soporte (support_cases + support_messages en tiempo real). */
+/** Colores del chat de soporte (40): burbuja entrante gris, propia azul, campo relleno. */
+const BUBBLE_IN = "#EBEEF2";
+const BUBBLE_MINE = "#0041AC";
+const FIELD_BG = "#F2F4F6";
+
+/** Avatar circular de soporte (`blueSoft` + audífonos azules): 42 pt en el encabezado, 36 pt junto a las burbujas. */
+function SupportAvatar({ size }: { size: number }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: "#E5EDFD", alignItems: "center", justifyContent: "center" }}>
+      <LineIcon name="headset" size={size * 0.64} color="#0A2E8A" stroke={2.1} />
+    </View>
+  );
+}
+
+/** Burbuja entrante con avatar y hora debajo, o propia (azul, texto blanco) con hora y doble check. */
+function Bubble({ body, time, mine }: { body: string; time?: string; mine: boolean }) {
+  if (mine) {
+    return (
+      <View style={styles.mineWrap}>
+        <View style={[styles.bubble, styles.bubbleMine]}><Text style={ft(15.1, "400", colors.white, 21)}>{body}</Text></View>
+        {time ? (
+          <View style={styles.mineMeta}>
+            <Text style={ft(10.4, "400", "#6E7689", 14)}>{time}</Text>
+            <Ionicons name="checkmark-done" size={16} color={colors.blueText} style={{ marginLeft: 5 }} />
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+  return (
+    <View style={styles.theirsWrap}>
+      <View style={styles.theirsAvatar}><SupportAvatar size={36} /></View>
+      <View style={styles.theirsCol}>
+        <View style={[styles.bubble, styles.bubbleTheirs, { paddingHorizontal: 13.8 }]}><Text style={ft(15.1, "400", colors.ink, 21.2)}>{body}</Text></View>
+        {time ? <Text style={[ft(10.4, "400", "#6E7689", 14), { marginTop: 4.5, marginLeft: 0.5 }]}>{time}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Pantalla 40 · Chat con soporte (tanda-05/40-chat-soporte.png): chevron + avatar de soporte + "Soporte YAVA" /
+ * "Pedido #1042", tarjeta del pedido, burbujas (entrante gris con avatar; propia azul) y compositor con clip,
+ * campo relleno y botón de enviar. Mensajes en `support_cases` + `support_messages` en tiempo real.
+ */
 export default function Support() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const params = useLocalSearchParams<{ order?: string }>();
   const orderId = params.order ?? null;
@@ -70,59 +119,112 @@ export default function Support() {
     } finally { setSending(false); }
   }
 
+  const o = order.data;
+  const subtitle = o ? `Pedido #${o.number}` : openCase.data ? `Caso #${openCase.data.number}` : "Te respondemos en minutos";
+  const header = (
+    <NavBar height={61.4} backLeft={16.6} chevronHeight={18.1} chevronStroke={2.2}>
+      <View style={styles.headRow}>
+        <SupportAvatar size={42} />
+        <View style={{ marginLeft: 10.6 }}>
+          <Text style={ft(14.9, "700", colors.ink, 19)} accessibilityRole="header">Soporte YAVA</Text>
+          <Text style={[ft(12.5, "400", "#6E7689", 17), { marginTop: 2.6 }]}>{subtitle}</Text>
+        </View>
+      </View>
+    </NavBar>
+  );
+
   if (!session) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }}><Header title="Soporte YAVA" /><EmptyState icon="chatbubble-ellipses-outline" title="Inicia sesión" body="Así podemos ayudarte con tus pedidos." actionTitle="Iniciar sesión" onAction={() => router.push(loginHref(`/(customer)/support${orderId ? `?order=${orderId}` : ""}`) as never)} /></SafeAreaView>;
+    return (
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        {header}
+        <EmptyState icon="chatbubble-ellipses-outline" title="Inicia sesión" body="Así podemos ayudarte con tus pedidos." actionTitle="Iniciar sesión"
+          onAction={() => router.push(loginHref(`/(customer)/support${orderId ? `?order=${orderId}` : ""}`) as never)} />
+      </View>
+    );
   }
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
-  const greeting = `Hola${firstName ? `, ${firstName}` : ""}. ¿En qué podemos ayudarte${order.data ? " con tu pedido" : ""}?`;
-  const o = order.data;
+  const greeting = `Hola${firstName ? `, ${firstName}` : ""}. ¿En qué podemos ayudarte${o ? " con tu pedido" : ""}?`;
+  const openOrder = () => { if (o) router.push(o.status === "delivered" ? `/(customer)/order/${o.id}/delivered` as never : `/(customer)/order/${o.id}` as never); };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={["top", "bottom"]}>
-      <Header title="Soporte YAVA" subtitle={o ? `Pedido #${o.number}` : openCase.data ? `Caso #${openCase.data.number}` : undefined} />
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      {header}
       {o ? (
-        <View style={styles.orderBar}>
-          <Text variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{o.type === "shipment" ? "Envío" : o.merchant_name}</Text>
-          <Text variant="caption" tone="muted">{formatCOP(o.total)} · {o.status ? ORDER_STATUS_LABEL[o.status] : ""}</Text>
-        </View>
+        <Pressable onPress={openOrder} accessibilityRole="button" accessibilityLabel={`Ver pedido #${o.number}`}
+          style={({ pressed }) => [styles.orderCard, pressed && { opacity: 0.9 }]}>
+          {o.type === "shipment" ? (
+            <View style={[styles.orderPhoto, styles.orderShipment]}><LineIcon name="box" size={40} color="#8A6400" /></View>
+          ) : (
+            <Image source={supportOrderPhoto(o.merchant_name, o.merchant_logo)} style={styles.orderPhoto} contentFit="cover" transition={120} />
+          )}
+          <View style={{ flex: 1, marginLeft: 13.8 }}>
+            <Text style={ft(14.8, "700", colors.ink, 19)} numberOfLines={1}>{o.type === "shipment" ? "Envío" : o.merchant_name}</Text>
+            <Text style={[ft(13.1, "400", "#4C566E", 18), { marginTop: 4.4 }]} numberOfLines={1}>
+              {formatCOP(o.total)}{o.status ? `  ·  ${ORDER_STATUS_LABEL[o.status]}` : ""}
+            </Text>
+          </View>
+          <RowChevron color="#414C67" size={18} style={{ marginRight: 4.4 }} />
+        </Pressable>
       ) : null}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
-        {openCase.isLoading || (caseId && messages.isLoading) ? <View style={{ padding: 16 }}><ListSkeleton rows={2} height={40} /></View> : openCase.error || messages.error ? (
+        {openCase.isLoading || (caseId && messages.isLoading) ? (
+          <View style={styles.listPad}>
+            <View style={{ flexDirection: "row", gap: 9 }}><Skeleton width={36} height={36} style={{ borderRadius: 18 }} /><Skeleton width={240} height={64} style={{ borderRadius: 20 }} /></View>
+            <Skeleton width={190} height={50} style={{ borderRadius: 22, alignSelf: "flex-end", marginTop: 22 }} />
+          </View>
+        ) : openCase.error || messages.error ? (
           <ErrorState error={openCase.error ?? messages.error} onRetry={() => { void openCase.refetch(); void messages.refetch(); }} />
         ) : (
-          <FlatList ref={listRef} data={messages.data ?? []} keyExtractor={(m) => String(m.id)} contentContainerStyle={{ padding: 16, gap: 8, flexGrow: 1 }}
-            ListHeaderComponent={<View style={[styles.bubble, styles.theirs]}><Text>{greeting}</Text></View>}
+          <FlatList ref={listRef} data={messages.data ?? []} keyExtractor={(m) => String(m.id)} contentContainerStyle={styles.listPad}
+            ListHeaderComponent={<Bubble body={greeting} time={openCase.data?.created_at ? formatTime(openCase.data.created_at) : undefined} mine={false} />}
             ListEmptyComponent={
-              <View style={{ paddingTop: 12, gap: 8 }}>
-                {["Necesito revisar un cobro.", "Mi pedido llegó incompleto.", "Mi pedido está demorado."].map((s) => <Button key={s} title={s} variant="outline" size="md" onPress={() => setText(s)} />)}
+              <View style={styles.suggestions}>
+                {["Necesito revisar un cobro.", "Mi pedido llegó incompleto.", "Mi pedido está demorado."].map((s) => (
+                  <Pressable key={s} onPress={() => setText(s)} accessibilityRole="button" style={({ pressed }) => [styles.suggestion, pressed && { opacity: 0.8 }]}>
+                    <Text style={ft(13.5, "500", colors.blueText, 18)}>{s}</Text>
+                  </Pressable>
+                ))}
               </View>
             }
-            renderItem={({ item }) => {
-              const mine = item.sender_id === uid;
-              return (
-                <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
-                  <Text tone={mine ? "inverse" : "default"}>{item.body}</Text>
-                  <Text variant="small" style={{ color: mine ? "rgba(255,255,255,0.8)" : colors.gray400, marginTop: 2, alignSelf: "flex-end" }}>{formatTime(item.created_at)}</Text>
-                </View>
-              );
-            }} />
+            renderItem={({ item }) => <Bubble body={item.body} time={formatTime(item.created_at)} mine={item.sender_id === uid} />} />
         )}
-        {error ? <Text tone="danger" variant="caption" style={{ paddingHorizontal: 16 }}>{error}</Text> : null}
-        <View style={styles.inputRow}>
-          <TextInput value={text} onChangeText={setText} placeholder="Escribe un mensaje" placeholderTextColor={colors.gray400} style={styles.input} multiline />
-          <Pressable onPress={send} disabled={sending || !text.trim()} style={[styles.send, !text.trim() && { opacity: 0.4 }]}><Ionicons name="send" size={18} color={colors.white} /></Pressable>
+        {error ? <Text style={[ft(12.5, "400", colors.red, 17), { paddingHorizontal: 18 }]}>{error}</Text> : null}
+        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) + 10 }]}>
+          <View style={styles.attach} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Ionicons name="attach" size={32} color="#3D465F" style={{ transform: [{ rotate: "45deg" }] }} />
+          </View>
+          <TextInput value={text} onChangeText={setText} placeholder="Escribe un mensaje" placeholderTextColor="#8A92A4" style={styles.input} multiline numberOfLines={Platform.OS === "web" ? 1 : undefined}
+            accessibilityLabel="Mensaje para soporte" selectionColor={colors.blueText} />
+          <Pressable onPress={send} disabled={sending || !text.trim()} accessibilityRole="button" accessibilityLabel="Enviar mensaje"
+            style={[styles.send, sending && { opacity: 0.6 }]}>
+            <Ionicons name="send" size={19} color={colors.white} style={{ marginLeft: 3 }} />
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
-  orderBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.gray50, borderBottomWidth: 1, borderBottomColor: colors.gray200 },
-  bubble: { maxWidth: "82%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.lg },
-  mine: { alignSelf: "flex-end", backgroundColor: colors.blue, borderBottomRightRadius: 4 },
-  theirs: { alignSelf: "flex-start", backgroundColor: colors.gray100, borderBottomLeftRadius: 4 },
-  inputRow: { flexDirection: "row", alignItems: "flex-end", padding: 12, borderTopWidth: 1, borderTopColor: colors.gray200, gap: 8 },
-  input: { flex: 1, minHeight: 44, maxHeight: 120, borderWidth: 1, borderColor: colors.gray200, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: colors.carbon },
-  send: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.blue, alignItems: "center", justifyContent: "center" },
+  root: { flex: 1, backgroundColor: colors.white },
+  headRow: { position: "absolute", left: 61, top: 0, bottom: 0, flexDirection: "row", alignItems: "center" },
+  orderCard: { flexDirection: "row", alignItems: "center", height: 90.5, marginHorizontal: 13.9, marginTop: 11.1, borderRadius: 16, borderWidth: 1, borderColor: "#E3E8EF", backgroundColor: colors.white, paddingLeft: 8.2 },
+  orderPhoto: { width: 98.4, height: 71.6, borderRadius: 12, backgroundColor: colors.surfaceGray },
+  orderShipment: { alignItems: "center", justifyContent: "center", backgroundColor: "#FFF4D1" },
+  listPad: { paddingHorizontal: 14.3, paddingTop: 19, paddingBottom: 16, flexGrow: 1 },
+  theirsWrap: { flexDirection: "row", alignItems: "flex-start", marginBottom: 8.8 },
+  theirsAvatar: { marginTop: 3.6 },
+  theirsCol: { flexShrink: 1, marginLeft: 8.8, maxWidth: 271 },
+  bubble: { paddingHorizontal: 14.8, paddingTop: 12.8, paddingBottom: 12.8 },
+  bubbleTheirs: { backgroundColor: BUBBLE_IN, borderRadius: 20 },
+  mineWrap: { alignItems: "flex-end", marginBottom: 14.6, marginRight: -1.2 },
+  bubbleMine: { backgroundColor: BUBBLE_MINE, borderRadius: 22, paddingHorizontal: 17, maxWidth: 290 },
+  mineMeta: { flexDirection: "row", alignItems: "center", marginTop: 3.4 },
+  suggestions: { alignItems: "flex-end", gap: 8, paddingTop: 6 },
+  suggestion: { borderWidth: 1.3, borderColor: "#1F5BD6", borderRadius: 18, paddingHorizontal: 14, height: 36, justifyContent: "center", backgroundColor: colors.white },
+  composer: { flexDirection: "row", alignItems: "flex-end", paddingLeft: 14, paddingRight: 11, paddingTop: 8, backgroundColor: colors.white },
+  attach: { width: 34, height: 48, alignItems: "center", justifyContent: "center", marginRight: 8 },
+  input: { flex: 1, minHeight: 48.5, maxHeight: 120, borderRadius: 24.3, backgroundColor: FIELD_BG, paddingHorizontal: 19.4, paddingTop: 13.5, paddingBottom: 13.5, fontSize: 15.5, lineHeight: 21, color: colors.ink },
+  send: { width: 43, height: 43, borderRadius: 21.5, backgroundColor: "#0047BD", alignItems: "center", justifyContent: "center", marginLeft: 6, marginBottom: 2.7 },
 });
