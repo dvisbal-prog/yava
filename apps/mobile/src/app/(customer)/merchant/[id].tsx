@@ -14,13 +14,15 @@ import { CartBar } from "@/components/customer/CartBar";
 import { etaText } from "@/components/customer/MerchantCard";
 import { StoreHero, HeroButton, extendedHero } from "@/components/customer/store/StoreHero";
 import { RiderIcon } from "@/components/customer/store/StoreIcons";
+import { StoreLogoTile, storeTileArt } from "@/components/customer/home/StoreLogoTile";
+import { AlcoholLegal } from "@/components/customer/store/Deal";
 import {
   InfoStrip, UnderlineTabs, MenuGridCard, SegmentBar, MarketProductCard, ClosedMenuCard, ClosedNotice, StatCell,
 } from "@/components/customer/store/MenuParts";
 import { buildSections, featuredProducts, topPerCategory, merchantSubtitle, storeSubtitle, splitUnit } from "@/components/customer/store/featured";
 import {
   useMerchant, useMerchantMenu, useMerchantHours, useFavoriteIds, useToggleFavorite, useRequireAuth, nextOpeningLabel,
-  type ProductRow as ProductRowData, type MerchantPublic,
+  alcoholProductIds, requireAdultFor, type ProductRow as ProductRowData, type MerchantPublic,
 } from "@/features/customer";
 import { merchantImage, merchantDesignImage, productImage } from "@/lib/design-images";
 import { confirm } from "@/lib/dialog";
@@ -76,6 +78,8 @@ export default function MerchantScreen() {
   useEffect(() => { if (tab !== FEATURED && !sections.some((s) => s.id === tab)) setTab(FEATURED); }, [sections, tab]);
 
   const cartMerchant = m ? { id: m.id ?? "", name: m.name ?? "", delivery_fee: m.delivery_fee ?? 0, category: m.category ?? "food", prep_min: m.prep_min ?? 0, prep_max: m.prep_max ?? 0 } : null;
+  /** Productos de "Cervezas y licores" (piden la verificación de edad la primera vez en la sesión). */
+  const alcohol = useMemo(() => (menu.data ? alcoholProductIds(menu.data.products, menu.data.categories) : null), [menu.data]);
 
   function qtyOf(productId: string): number {
     if (cart.merchant?.id !== id) return 0;
@@ -84,17 +88,20 @@ export default function MerchantScreen() {
 
   function addDirect(p: ProductRowData) {
     if (!cartMerchant) return;
-    const line = { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] };
-    const res = cart.addLine(cartMerchant, line);
-    if (res === "different_merchant") {
-      void confirm("Ya tienes una canasta", `Tu canasta tiene productos de ${cart.merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${p.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
-        if (!ok) return;
-        cart.replaceWith(cartMerchant, line);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      });
-      return;
-    }
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const target = cartMerchant;
+    requireAdultFor([p.id], alcohol, () => {
+      const line = { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] };
+      const res = useCart.getState().addLine(target, line);
+      if (res === "different_merchant") {
+        void confirm("Ya tienes una canasta", `Tu canasta tiene productos de ${useCart.getState().merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${p.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
+          if (!ok) return;
+          useCart.getState().replaceWith(target, line);
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        });
+        return;
+      }
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    });
   }
 
   function setQty(p: ProductRowData, q: number) {
@@ -213,10 +220,12 @@ export default function MerchantScreen() {
   if (isStore) {
     const cardW = (width - 17.1 - 17 - 11.5) / 2;
     const hero = extendedHero(merchantImage(m, "cover"), ASPECT_STORE);
+    const cover = hero.source === undefined ? wordmarkCover(m) : null;
     return (
       <View style={styles.root}>
         <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
           <StoreHero source={hero.source} height={SHEET_26.top + SHEET_26.radius} aspect={hero.aspect}
+            background={cover?.background} backdrop={cover?.backdrop}
             left={<HeroButton icon="chevron-back" label="Volver" onPress={goBack} size={38.8} iconSize={21} />}
             right={<>
               <HeroButton icon="search" label="Buscar" onPress={() => router.push("/(customer)/search" as never)} size={38.8} iconSize={22} />
@@ -254,13 +263,17 @@ export default function MerchantScreen() {
                 const { name, unit } = splitUnit(p.name);
                 const withOpts = Boolean(menu.data?.withOptions.has(p.id));
                 return (
-                  <MarketProductCard key={p.id} width={cardW} name={name} unit={unit} price={p.price} image={productImage(p)}
+                  <MarketProductCard key={p.id} width={cardW} name={name} unit={unit} price={p.price} compareAt={p.compare_at_price} image={productImage(p)}
                     onPress={() => onProduct(p)} onAdd={() => onAdd(p)} disabled={!isOpen} soldOutLabel={soldOut(p)}
                     qty={isOpen && !withOpts ? qtyOf(p.id) : undefined} onQty={(q) => setQty(p, q)} />
                 );
               })}
             </View>
           )}
+          {/* Leyenda legal debajo de los licores (sección "Cervezas y licores" o destacados que los incluyen). */}
+          {menuState === "ok" && alcohol && visible.some((p) => alcohol.has(p.id)) ? (
+            <AlcoholLegal style={styles.alcoholLegal} />
+          ) : null}
           {m.category === "pharmacy" && menuState === "ok" ? (
             <View style={styles.pharmaNote}>
               <Ionicons name="information-circle-outline" size={16} color={colors.textPlaceholder} />
@@ -336,15 +349,45 @@ function MenuLogo({ m }: { m: MerchantPublic }) {
   return <Image source={merchantImage(m, "logo")} style={[styles.logoTile, { backgroundColor: colors.surfaceGray }]} contentFit="cover" />;
 }
 
+/** Mezcla un color `#RRGGBB` con blanco: `amount` 0,12 = 12 % del color. */
+function tint(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (v: number) => Math.round(255 - (255 - v) * amount).toString(16).padStart(2, "0");
+  return `#${ch((n >> 16) & 255)}${ch((n >> 8) & 255)}${ch(n & 255)}`;
+}
+
+/**
+ * Portada de 26 para las tiendas sin foto (D1, Olímpica, Carulla, Oxxo): el color de su baldosa tipográfica al 12 %
+ * con el nombre grande en marca de agua, en vez de una franja gris que parece una foto que no cargó. Nunca el logo
+ * de la cadena: es el mismo nombre en letra del app que la baldosa de "Tiendas cerca de ti".
+ */
+function wordmarkCover(m: MerchantPublic): { background: string; backdrop: React.ReactNode } | null {
+  const art = storeTileArt({ name: m.name ?? "", slug: m.slug, logo_url: m.logo_url });
+  if (art.kind !== "wordmark") return null;
+  const n = parseInt(art.bg.slice(1), 16);
+  const light = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 170;
+  return {
+    background: tint(art.bg, 0.12),
+    backdrop: (
+      <View style={StyleSheet.absoluteFill} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Text numberOfLines={1} style={[styles.coverMark, { color: light ? art.fg : art.bg }]}>{art.label}</Text>
+      </View>
+    ),
+  };
+}
+
 /**
  * Baldosa grande del logo (26): 88,7 pt radio 16 sobre menta; la foto va con 4 pt de aire como en el PNG.
- * Sin logo (ni de diseño ni en la BD) se usa la fachada del comercio, para no dejar la baldosa vacía.
+ * Sin logo (ni de diseño ni en la BD) se usa la fachada del comercio, para no dejar la baldosa vacía; sin ninguna
+ * foto (D1, Olímpica, Carulla, Oxxo), la misma baldosa tipográfica de "Tiendas cerca de ti" del Inicio.
  */
 function StoreLogo({ m, size }: { m: MerchantPublic; size: number }) {
   const local = merchantDesignImage(m, "logo");
+  const source = local ?? merchantImage(m, "logo") ?? merchantImage(m, "storefront");
+  if (source === undefined) return <StoreLogoTile m={{ name: m.name ?? "", slug: m.slug, logo_url: m.logo_url }} width={size} height={size} radius={radius.r16} />;
   return (
     <View style={[styles.storeLogo, { width: size, height: size }]}>
-      <Image source={local ?? merchantImage(m, "logo") ?? merchantImage(m, "storefront")} style={local !== undefined ? { position: "absolute", left: 4.2, top: 4.2, width: size - 8.4, height: size - 8.4 } : { width: size, height: size }} contentFit="cover" />
+      <Image source={source} style={local !== undefined ? { position: "absolute", left: 4.2, top: 4.2, width: size - 8.4, height: size - 8.4 } : { width: size, height: size }} contentFit="cover" />
     </View>
   );
 }
@@ -392,6 +435,8 @@ const styles = StyleSheet.create({
   storeMetaDot: { fontSize: 14, lineHeight: 19, color: colors.textTertiary, marginHorizontal: 10 },
   mkGrid: { flexDirection: "row", flexWrap: "wrap", paddingLeft: 17.1, paddingRight: 17, columnGap: 11.5, rowGap: 12.9, paddingTop: 15.2 },
   pharmaNote: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 18, paddingHorizontal: 17.5 },
+  alcoholLegal: { marginTop: 16, paddingHorizontal: 17.5 },
+  coverMark: { position: "absolute", right: 16, bottom: SHEET_26.radius + 4, fontSize: 58, lineHeight: 66, fontWeight: "800", letterSpacing: -2, opacity: 0.2 },
   pharmaNoteText: { flex: 1, fontSize: 12, lineHeight: 16, color: colors.textPlaceholder },
 
   // 43

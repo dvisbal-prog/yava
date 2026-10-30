@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, ScrollView, Pressable, TextInput, StyleSheet, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,7 +14,7 @@ import { designImages } from "@/lib/design-images";
 import { ErrorState } from "@/components/customer";
 import { NavBar, PillButton } from "@/components/customer/cart/parts";
 import { NO_OUTLINE } from "@/components/customer/cart/FormField";
-import { useActiveCoupons, type CouponRow } from "@/features/customer";
+import { useActiveCoupons, useMerchantsByIds, type CouponRow } from "@/features/customer";
 
 function title(c: CouponRow): string {
   if (c.type === "percent") return `${c.value} % de descuento`;
@@ -31,6 +31,10 @@ export default function Coupon() {
   const insets = useSafeAreaInsets();
   const cart = useCart();
   const coupons = useActiveCoupons();
+  // Cupones que paga un comercio (BOCAMAR5…): se marca "Solo en Bocamar" para que no parezcan de cualquier pedido.
+  const couponMerchantIds = useMemo(() => Array.from(new Set((coupons.data ?? []).map((c) => c.merchant_id).filter((x): x is string => Boolean(x)))), [coupons.data]);
+  const couponMerchants = useMerchantsByIds(couponMerchantIds);
+  const merchantName = (id: string | null) => (id ? couponMerchants.data?.find((m) => m.id === id)?.name ?? null : null);
   const [code, setCode] = useState(cart.couponCode ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,7 +59,7 @@ export default function Coupon() {
       if (!c || (c.valid_to && new Date(c.valid_to).getTime() < now) || (c.valid_from && new Date(c.valid_from).getTime() > now) || (c.max_uses != null && c.uses >= c.max_uses)) {
         setError("Cupón no válido o vencido."); return;
       }
-      if (!usable(c)) { setError("Este cupón es de otro comercio."); return; }
+      if (!usable(c)) { setError(merchantName(c.merchant_id) ? `Este cupón es solo para pedidos en ${merchantName(c.merchant_id)}.` : "Este cupón es de otro comercio."); return; }
       if (inCart && cart.subtotal() < c.min_order) { setError(`Este cupón aplica para pedidos desde ${formatCOP(c.min_order)}.`); return; }
       cart.setCoupon(c.code);
       if (inCart) router.back();
@@ -128,6 +132,7 @@ export default function Coupon() {
                     <Text style={styles.cardDesc} numberOfLines={1}>{c.description || title(c)}</Text>
                     {/* Mínimo y vigencia en líneas separadas: en una sola se cortaba la fecha ("Hasta 21 de en…"). */}
                     {c.min_order ? <Text style={styles.cardSub} numberOfLines={1}>{`Mínimo ${formatCOP(c.min_order)}`}</Text> : null}
+                    {merchantName(c.merchant_id) ? <Text style={styles.cardSub} numberOfLines={1}>{`Solo en ${merchantName(c.merchant_id)}`}</Text> : null}
                     {c.valid_to ? <Text style={styles.cardSub} numberOfLines={1}>{`Hasta ${formatDate(c.valid_to)}`}</Text> : null}
                   </View>
                   <Pressable onPress={() => apply(c.code)} disabled={!ok || applied || busy} accessibilityRole="button" style={[styles.use, applied && styles.useOn]}>

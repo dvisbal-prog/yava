@@ -88,6 +88,37 @@ No aparecen como producto en las pantallas 01–48, así que no se les asignó n
 - **Mercado**: Mango Tommy (unidad), Cebolla cabezona (1 kg) y Aceite Premier 1 L. El aceite solo aparece dentro de la foto de la categoría Despensa.
 - **Farmacia**: Acetaminofén 500 mg x 10, Ibuprofeno 400 mg x 10 y Alcohol antiséptico 350 ml.
 - **Comercio** Arepas Doña Rosa (solicitud pendiente): no aparece en los diseños.
+- **D1, Olímpica, Carulla y Oxxo** (nuevas, 29 oct 2026, migración 0015): no tienen logo, portada ni recorte. Sus productos de mercado repiten los nombres y las fotos de Mercado del Puerto y Tienda de la Costa (Leche, Arroz, Aceite, Banano, Tomate, Mango), así que el app usa los mismos recortes por nombre. Los 59 productos del catálogo ampliado tienen foto propia en Storage (ver "Catálogo ampliado de las cadenas" abajo).
+
+### Cervezas y licores (Home, 29 oct 2026)
+
+No salen en ningún diseño. El app usa **fotos locales** de estudio, genéricas y sin marca ni texto, en `apps/mobile/assets/images/licores/` (900 × 900 sobre blanco, generadas con Higgsfield), mapeadas por nombre de producto en `lib/design-images.ts`, una distinta por producto para que la fila del Inicio no repita foto: Águila → `licorLatas` (six pack), Costeña → `licorLatasBandeja` (bandeja de cartón liso), Poker → `licorLatasPiramide` (pirámide), Club Colombia → `licorBotellasCerveza` (ámbar), Corona → `licorBotellasTransparentes` (vidrio transparente, en portabotellas liso), Aguardiente → `licorBotellaTransparente`, Ron → `licorBotellaRon`, Vino → `licorBotellaVino`. En la BD (`image_urls`) quedan como respaldo cuatro fotos genéricas de Unsplash, revisadas una por una. En ambos casos **ninguna foto muestra la etiqueta ni el logo de una marca**, aunque el nombre del producto sí sea de una marca: son fotos de referencia del tipo de envase. Cualquier foto nueva de licor debe cumplir lo mismo.
+
+Respaldo en la BD:
+
+| Foto (Unsplash, `?w=800`) | Qué muestra | Productos |
+|---|---|---|
+| `photo-1696739696220-8d2e27465662` | Lata plateada lisa sobre fondo claro | Cerveza Costeña lata, Cerveza Poker lata, Cerveza Águila lata |
+| `photo-1644085159285-5fd924740cb3` | Botella ámbar sin etiqueta sobre blanco | Club Colombia Dorada, Cerveza Corona |
+| `photo-1591704951890-0862b2e98acb` | Botella de vidrio transparente con tapón de corcho, sin etiqueta | Aguardiente Antioqueño, Ron Medellín 3 años |
+| `photo-1592119748016-a61c40a44320` | Botella oscura de vino con etiqueta lisa color vino, sin texto | Vino tinto Casillero del Diablo |
+
+### Catálogo ampliado de las cadenas (D1, Olímpica, Carulla y Oxxo, 29 oct 2026)
+
+59 productos genéricos nuevos (ids `e0000000-…-0000000002NN`, en vivo y en `seed.sql`), cada uno con **su propia foto**: bodegones de estudio generados con Higgsfield (`gpt_image_2_5`, calidad media, 1:1) con el mismo estilo para todos — un solo producto centrado, fondo blanco puro, sombra suave y empaque genérico **sin texto, sin logos y sin marcas** (bolsas transparentes, latas lisas, etiquetas en blanco). Se revisaron una por una, con acercamiento a las que tenían empaque (café, detergente, papas, pilas, vinos, aceite, lata); en la revisión se repitieron las de los huevos y el papel higiénico, cuya cantidad no coincidía con el nombre.
+
+- **No van en el app**: están en Storage, `product-images/<id del comercio>/<slug>.jpg` (800 × 800, JPG de 18–110 KB), y la URL pública es `image_urls[0]` de cada producto. Ninguna coincide con un recorte del diseño.
+- **Encuadre**: la tarjeta de la tienda (26) muestra la foto cuadrada en un marco 1,29:1 que recorta 11 % arriba y abajo. Por eso el producto (con su sombra) va dentro del 66 % central del alto (de 0,17 a 0,83): las fotos que pasaban de ahí (botellas, bolsas altas, piña…) se reencuadraron reduciéndolas y centrándolas sobre el mismo blanco del fondo y se subieron con sufijo `-v2` (archivo nuevo para no esperar la caché de 1 h; las versiones anteriores quedan sin uso en Storage).
+- **Básicos de las cadenas**: Leche, Arroz, Aceite Premier, Banano, Tomate y Mango Tommy de D1, Olímpica, Carulla y Oxxo tienen foto de estudio propia (`leche-1l`, `arroz-1kg`, `aceite-vegetal-1l`, `banano-1kg`, `tomate-1kg`, `mango-tommy`, copiadas en la carpeta de cada cadena que las vende). En esas cuatro cadenas la foto de estudio de Storage **gana al recorte del diseño por nombre** (`studioProductPhoto` en `lib/design-images.ts`, también en el detalle 27), así su tienda no mezcla los bodegones del Drive con fotos de estudio. Mercado del Puerto y Tienda de la Costa conservan los recortes del Drive, y "Lo esencial" de 25 sigue mostrando sus copias. Los licores de las cadenas siguen con su foto local de `licores/` (en la BD tienen la de Unsplash, que no es de Storage). La canasta y el pedido (28, 20–24) siguen eligiendo por nombre.
+- **Originales** (PNG 1024 × 1024) y las versiones de 800 subidas: `YAVA/productos-cadenas/<d1|olimpica|carulla|oxxo>/` y su subcarpeta `800/`, fuera del repo.
+- Productos y archivos por tienda (los `-v2` son reencuadres o fotos repetidas):
+  - **D1**: leche-1l, arroz-1kg, aceite-vegetal-1l, azucar-blanca-v2, pasta-espagueti, lentejas-v2, atun-en-aceite, huevos-aa-30-v2, queso-costeno, yogur-fresa-v2, detergente-polvo-v2, lavaloza-crema, papel-higienico-v2, blanqueador-v2, papas-fritas-v2, galletas-soda-v2, gomitas-v2.
+  - **Olímpica**: banano-1kg, tomate-1kg, arroz-1kg, papaya-v2, pina-v2, limon-tahiti, yuca, huevos-rojos-15, suero-costeno, mantequilla, cafe-molido-v2, harina-maiz-v2, pechuga-pollo, carne-molida, chuleta-cerdo, agua-six-pack-v2, jugo-naranja-v2, gaseosa-cola-v2.
+  - **Carulla**: mango-tommy, leche-1l, aceite-vegetal-1l, fresas-v2, arandanos, aguacate-hass, queso-parmesano, mozzarella, jamon-serrano, salami, pan-masa-madre, croissants, baguette, aceite-oliva-v2, pasta-artesanal-v2, pesto, vino-blanco-v2, vino-malbec-v2.
+  - **Oxxo**: leche-1l, arroz-1kg, agua-600-v2, bebida-energetica-v2, te-frio-limon-v2, mani-sal-v2, chocolatina-v2, galletas-chips-v2, sandwich-jamon-queso-v2, empanada-carne, perro-caliente, cafe-americano, bolsa-hielo-v2, pilas-aa, vasos-desechables-v2, cerveza-rubia-lata-v2, cerveza-negra-v2.
+- Las cantidades de la foto coinciden con el nombre: la cubeta de "Huevos AA (30 und)" tiene 6 filas de 5 y el paquete de "Papel higiénico (12 rollos)", 2 pisos de 3 × 2 (las primeras versiones mostraban 25 huevos y 16 rollos y se repitieron).
+- Los 4 licores nuevos (dos vinos de Carulla, dos cervezas de Oxxo) cumplen la regla de arriba: botella o lata lisa, etiqueta en blanco o sin etiqueta.
+- Para cambiar una foto: generar otra con el mismo estilo, bajarla a 800 × 800 (≤ 120 KB) con el producto dentro del 66 % central del alto, subirla con `storage cp --content-type image/jpeg` a un archivo nuevo (p. ej. `<slug>-v3.jpg`) y cambiar `image_urls` en vivo y en `seed.sql`. Reemplazar la misma ruta también sirve, pero la URL puede seguir sirviendo la foto vieja hasta 1 h (caché `max-age=3600`).
 
 ## Imágenes fijas (no dependen de la BD)
 

@@ -16,7 +16,7 @@ import {
   BrowseSection, MarketBanner, StoreCard, EssentialCard, PharmacyCategoryCard, PharmacyCard, FeaturedProductCard, splitUnit, type PharmacyCategory,
 } from "@/components/customer/browse/StoreBrowse";
 import { productImage, productDesignImage, normalizeName } from "@/lib/design-images";
-import { useNearbyMerchants, useProductsOfMerchants, useFavoriteIds, useToggleFavorite, useRequireAuth } from "@/features/customer";
+import { useNearbyMerchants, useProductsOfMerchants, useFavoriteIds, useToggleFavorite, useRequireAuth, alcoholProductIds, requireAdultFor } from "@/features/customer";
 import type { ProductRow as ProductRowData, ProductCategoryRow, NearbyMerchant } from "@/features/customer";
 import { confirm } from "@/lib/dialog";
 
@@ -80,6 +80,8 @@ export function StoreCategoryScreen({ config, notice, searchPlaceholder }: { con
    * de la tienda más cercana: "Aceite Premier 1 L" agotado en Mercado del Puerto sale de Tienda de la Costa.
    * Con una categoría elegida se filtra antes de juntar, para no perder una copia que solo esa tienda clasifica así.
    */
+  /** Licores de las tiendas: no van en "Lo esencial" / "Productos destacados" (tienen su fila en el Inicio). */
+  const alcohol = useMemo(() => alcoholProductIds(products.data?.products ?? [], products.data?.categories ?? []), [products.data]);
   const filteredProducts = useMemo(() => {
     const storeRank = new Map(ids.map((id, i) => [id, i]));
     const rank = (p: ProductRowData) => storeRank.get(p.merchant_id) ?? Number.MAX_SAFE_INTEGER;
@@ -88,6 +90,7 @@ export function StoreCategoryScreen({ config, notice, searchPlaceholder }: { con
     const catIds = chip ? categoryIdsForChip(chip, products.data?.categories ?? []) : null;
     const best = new Map<string, ProductRowData>();
     for (const p of [...(products.data?.products ?? [])].sort((a, b) => rank(a) - rank(b))) {
+      if (alcohol.has(p.id)) continue;
       if (catIds && (p.category_id == null || !catIds.has(p.category_id))) continue;
       const key = normalizeName(p.name);
       const cur = best.get(key);
@@ -95,21 +98,24 @@ export function StoreCategoryScreen({ config, notice, searchPlaceholder }: { con
       if (!cur || score(p) < score(cur)) best.set(key, p);
     }
     return [...best.values()].slice(0, ESSENTIALS_SHOWN);
-  }, [products.data, merchants.data, cartMerchantId, chip, ids]);
+  }, [products.data, merchants.data, cartMerchantId, chip, ids, alcohol]);
 
   function addDirect(p: ProductRowData, m: NearbyMerchant) {
-    const merchant = { id: m.id, name: m.name, delivery_fee: m.delivery_fee, category: m.category, prep_min: m.prep_min, prep_max: m.prep_max };
-    const line = { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] };
-    const res = addLine(merchant, line);
-    if (res === "different_merchant") {
-      void confirm("Ya tienes una canasta", `Tu canasta tiene productos de otro comercio. ¿Quieres vaciarla y agregar ${p.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
-        if (!ok) return;
-        replaceWith(merchant, line);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      });
-      return;
-    }
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Hoy los licores no salen en esta lista; la verificación queda por si un filtro los vuelve a mostrar.
+    requireAdultFor([p.id], alcohol, () => {
+      const merchant = { id: m.id, name: m.name, delivery_fee: m.delivery_fee, category: m.category, prep_min: m.prep_min, prep_max: m.prep_max };
+      const line = { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] };
+      const res = addLine(merchant, line);
+      if (res === "different_merchant") {
+        void confirm("Ya tienes una canasta", `Tu canasta tiene productos de otro comercio. ¿Quieres vaciarla y agregar ${p.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
+          if (!ok) return;
+          replaceWith(merchant, line);
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        });
+        return;
+      }
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    });
   }
 
   function toggleFavorite(id: string) {

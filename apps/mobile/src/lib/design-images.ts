@@ -3,7 +3,8 @@
  *
  * - `designImages.<clave>`: `require()` estático de cada archivo (úsalo con `expo-image`: `<Image source={designImages.bannerSaborCosta} />`).
  * - `merchantImage(m, kind)`: foto de diseño de un comercio por nombre/slug, con respaldo a `cover_url`/`logo_url` de la BD.
- * - `productImage(p, variant)`: foto de diseño de un producto por nombre, con respaldo a `image_urls[0]`/`image_url` de la BD.
+ * - `productImage(p, variant)`: foto de diseño de un producto por nombre, con respaldo a `image_urls[0]`/`image_url` de la BD
+ *   (en las cadenas de demo D1, Olímpica, Carulla y Oxxo gana su foto de estudio de Storage: `studioProductPhoto`).
  * - `promoImage(p)`: foto de diseño de una promoción por título, con respaldo a `image_url`.
  *
  * Cuando la BD apunte a estas mismas fotos en Storage, los helpers seguirán funcionando (preferirán el recorte local,
@@ -211,6 +212,18 @@ export const designImages = {
   /** 43 portada de Bocamar cerrado hasta 598 px (hoja en 548 px, radio 20 pt). */
   bocamarPortadaExt: require("../../assets/images/diseno/comercio-bocamar-portada-ext.jpg") as DesignImage,
 
+  // Cervezas y licores (Inicio y tiendas; fuera del Drive): fotos de estudio genéricas SIN marca ni texto,
+  // 900 × 900 sobre blanco, generadas con Higgsfield (gpt_image_2_5). Ver docs/DISENO-CLIENTE.md "Inicio · secciones
+  // nuevas". En la BD siguen las fotos de Unsplash (sin marca) como respaldo.
+  licorLatas: require("../../assets/images/licores/latas-six-pack.jpg") as DesignImage,
+  licorLatasBandeja: require("../../assets/images/licores/latas-bandeja.jpg") as DesignImage,
+  licorLatasPiramide: require("../../assets/images/licores/latas-piramide.jpg") as DesignImage,
+  licorBotellasCerveza: require("../../assets/images/licores/botellas-six-pack.jpg") as DesignImage,
+  licorBotellasTransparentes: require("../../assets/images/licores/botellas-transparentes.jpg") as DesignImage,
+  licorBotellaTransparente: require("../../assets/images/licores/botella-licor-transparente.jpg") as DesignImage,
+  licorBotellaRon: require("../../assets/images/licores/botella-ron.jpg") as DesignImage,
+  licorBotellaVino: require("../../assets/images/licores/botella-vino-tinto.jpg") as DesignImage,
+
 } as const;
 
 export type DesignImageKey = keyof typeof designImages;
@@ -355,6 +368,17 @@ const PRODUCTS: Record<string, Partial<Record<ProductImageVariant, DesignImage>>
   "cepillo dental": { default: designImages.productoCepilloDental },
   "apositos adhesivos": { default: designImages.productoApositos },
   "apositos": { default: designImages.productoApositos },
+  // Cervezas y licores de D1, Olímpica, Carulla y Oxxo (seed 0015): foto genérica por tipo de envase, nunca con marca.
+  // Una foto distinta por producto para que la fila del Inicio no repita la misma (latas: six pack, bandeja y
+  // pirámide; botellas: ámbar y transparentes).
+  "cerveza aguila lata 6 x 330 ml": { default: designImages.licorLatas },
+  "cerveza costena lata 6 x 330 ml": { default: designImages.licorLatasBandeja },
+  "cerveza poker lata 6 x 330 ml": { default: designImages.licorLatasPiramide },
+  "club colombia dorada 6 x 330 ml": { default: designImages.licorBotellasCerveza },
+  "cerveza corona 6 x 355 ml": { default: designImages.licorBotellasTransparentes },
+  "aguardiente antioqueno 750 ml": { default: designImages.licorBotellaTransparente },
+  "ron medellin 3 anos 750 ml": { default: designImages.licorBotellaRon },
+  "vino tinto casillero del diablo 750 ml": { default: designImages.licorBotellaVino },
 };
 
 /** Recorte local de diseño para un producto (sin respaldo a la BD). `detail`/`white` caen a `default`. */
@@ -364,11 +388,33 @@ export function productDesignImage(name: string | null | undefined, variant: Pro
   return entry[variant] ?? entry.default;
 }
 
-/** Foto de un producto: recorte del diseño por nombre o, si no hay, la primera URL de la BD. */
+/**
+ * Cadenas de demo sin arte del Drive (D1, Olímpica, Carulla y Oxxo): su foto de estudio sobre blanco en Storage
+ * (`product-images/<comercio>/…`) gana al recorte del diseño por nombre, para que su catálogo no mezcle los bodegones
+ * del Drive (mesa de madera) con las fotos de estudio. "Leche (1 L)" de D1 sale con su foto de estudio y la de
+ * Mercado del Puerto sigue con el recorte. Los licores de las cadenas tienen en la BD una foto de Unsplash (no de
+ * Storage), así que siguen con su foto local de `licores/`.
+ */
+const STUDIO_MERCHANTS = new Set([
+  "c0000000-0000-0000-0000-000000000009", // D1
+  "c0000000-0000-0000-0000-000000000010", // Olímpica
+  "c0000000-0000-0000-0000-000000000011", // Carulla
+  "c0000000-0000-0000-0000-000000000012", // Oxxo
+]);
+
+/** Foto de estudio propia de un producto de una cadena de demo (ver `STUDIO_MERCHANTS`); si no la tiene, `undefined`. */
+export function studioProductPhoto(p: { merchant_id?: string | null; image_urls?: string[] | null }): string | undefined {
+  const u = p.image_urls?.[0];
+  return p.merchant_id && STUDIO_MERCHANTS.has(p.merchant_id) && u?.includes(`/product-images/${p.merchant_id}/`) ? u : undefined;
+}
+
+/** Foto de un producto: foto de estudio de una cadena de demo, recorte del diseño por nombre o la primera URL de la BD. */
 export function productImage(
-  p: { name?: string | null; image_urls?: string[] | null; image_url?: string | null },
+  p: { name?: string | null; image_urls?: string[] | null; image_url?: string | null; merchant_id?: string | null },
   variant: ProductImageVariant = "default",
 ): DesignImageSource | undefined {
+  const studio = studioProductPhoto(p);
+  if (studio) return { uri: studio };
   const local = productDesignImage(p.name, variant);
   if (local !== undefined) return local;
   return uri(p.image_urls?.[0]) ?? uri(p.image_url);

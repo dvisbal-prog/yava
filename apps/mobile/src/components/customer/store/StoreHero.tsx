@@ -36,9 +36,10 @@ export function extendedHero(source: DesignImageSource | undefined, aspect: numb
  *   se agranda para cubrirla: nunca queda una franja de color plano bajo la foto.
  * - `bottomRadius`: 24 en 12 (portada sola); 0 cuando una hoja blanca la monta.
  * - `left` / `right`: botones flotantes (`HeroButton`).
+ * - `backdrop`: lo que va en la caja cuando no hay foto (p. ej. el nombre de la tienda en marca de agua, 26).
  */
-export function StoreHero({ source, height, aspect, bottomRadius = 0, left, right, dim, style, buttonsLeft = 13, buttonsTop = 10, buttonsGap = 7.5, stretch = true, background = colors.surfaceGray }: {
-  source?: DesignImageSource; height: number; aspect: number; bottomRadius?: number;
+export function StoreHero({ source, height, aspect, bottomRadius = 0, left, right, dim, style, buttonsLeft = 13, buttonsTop = 10, buttonsGap = 7.5, stretch = true, background = colors.surfaceGray, backdrop }: {
+  source?: DesignImageSource; height: number; aspect: number; bottomRadius?: number; backdrop?: React.ReactNode;
   left?: React.ReactNode; right?: React.ReactNode; dim?: boolean; style?: StyleProp<ViewStyle>;
   /** Posición de los botones flotantes (pt desde el borde izquierdo y desde `insets.top`). */
   buttonsLeft?: number; buttonsTop?: number; buttonsGap?: number;
@@ -55,7 +56,7 @@ export function StoreHero({ source, height, aspect, bottomRadius = 0, left, righ
       {source ? (
         <Image source={source} style={{ position: "absolute", left: 0, top: imgTop, width, height: imgH, opacity: dim ? 0.92 : 1 }}
           contentFit="cover" contentPosition="top" transition={150} />
-      ) : null}
+      ) : backdrop ?? null}
       <View style={[styles.bar, { top: insets.top + buttonsTop, left: buttonsLeft }]} pointerEvents="box-none">
         <View>{left}</View>
         <View style={[styles.right, { gap: buttonsGap }]}>{right}</View>

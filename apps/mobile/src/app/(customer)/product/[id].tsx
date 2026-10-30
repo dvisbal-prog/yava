@@ -17,8 +17,9 @@ import { StoreAwningIcon, LeafIcon } from "@/components/customer/store/StoreIcon
 import { BarStepper, OptionCard, RadioLine, InfoRow } from "@/components/customer/store/ProductParts";
 import { ComplementsSheet } from "@/components/customer/store/ComplementsSheet";
 import { splitUnit, unitFromDescription } from "@/components/customer/store/featured";
-import { useProduct, useMerchant, useMerchantMenu, useFavoriteIds, useToggleFavorite, useRequireAuth } from "@/features/customer";
-import { productImage, productDesignImage, merchantImage } from "@/lib/design-images";
+import { useProduct, useMerchant, useMerchantMenu, useFavoriteIds, useToggleFavorite, useRequireAuth, alcoholProductIds, isAlcoholCategoryName, requireAdultFor } from "@/features/customer";
+import { DEAL_YELLOW, DealBadge, BeforePrice, AlcoholLegal, discountPct, dealLabel } from "@/components/customer/store/Deal";
+import { productImage, productDesignImage, merchantImage, normalizeName, studioProductPhoto } from "@/lib/design-images";
 import { notify, confirm } from "@/lib/dialog";
 
 /** Proporción alto/ancho del recorte de portada del detalle (13: 851×507 px desde el tope del PNG). */
@@ -30,6 +31,8 @@ const SHEET_13 = { top: 197.5, radius: 6.5 };
  * 13 #0043C1, 27 #0140A5, 30 #0046BD.
  */
 const CTA_BLUE = { food: "#0043C1", market: "#0140A5", pharmacy: "#0046BD" } as const;
+/** Categorías de lo que se vende a granel en bolsa (27 "Bolsa de 1 kg"), sobre el nombre normalizado. */
+const BULK_CATEGORY = /\b(frutas?|verduras?|hortalizas?|despensa|granos?|abarrotes?)\b/;
 
 type Kind = "food" | "market" | "pharmacy";
 
@@ -72,6 +75,19 @@ export default function ProductScreen() {
   /** En 13 solo van los grupos obligatorios; los opcionales se eligen en la hoja de complementos (14). */
   const pageGroups = kind === "food" ? groups.filter(isRequired) : groups;
   const sheetGroups = kind === "food" ? groups.filter((g) => !isRequired(g)) : [];
+
+  /**
+   * Licores entre lo que se puede agregar desde aquí (el producto y sus complementos del menú). El producto se cuenta
+   * aunque el menú en caché no lo traiga; si su categoría no está en el menú cargado, `null` y se consulta a la BD.
+   */
+  const alcohol = useMemo(() => {
+    const cats = menu.data?.categories;
+    if (!p || !cats) return null;
+    if (p.category_id && !cats.some((c) => c.id === p.category_id)) return null;
+    return alcoholProductIds([...(menu.data?.products ?? []), p], cats);
+  }, [menu.data, p]);
+  /** Muestra la leyenda legal de bebidas alcohólicas (Ley 124 de 1994; Ley 30 de 1986, art. 16). */
+  const isAlcohol = p ? (alcohol ? alcohol.has(p.id) : isAlcoholCategoryName(p.name)) : false;
 
   const extras = useMemo(() => pageGroups.reduce((acc, g) => acc + g.options.filter((o) => (selected[g.id] ?? []).includes(o.id)).reduce((a, o) => a + o.price_delta, 0), 0), [pageGroups, selected]);
   const unit = (p?.price ?? 0) + extras;
@@ -134,25 +150,30 @@ export default function ProductScreen() {
     };
   }
 
-  /** Agrega varias líneas a la canasta; si es de otro comercio pide confirmación para vaciarla. */
+  /**
+   * Agrega varias líneas a la canasta; si es de otro comercio pide confirmación para vaciarla. Si alguna es un licor
+   * pide antes la verificación de edad (una vez por sesión); sin el menú cargado lo consulta a la BD.
+   */
   function commit(lines: CartLine[], after: () => void) {
     if (!m || !lines.length) return;
     const cm = { id: m.id ?? "", name: m.name ?? "", delivery_fee: m.delivery_fee ?? 0, category: m.category ?? "food", prep_min: m.prep_min ?? 0, prep_max: m.prep_max ?? 0 };
-    const [first, ...rest] = lines;
-    const res = cart.addLine(cm, first);
-    if (res === "different_merchant") {
-      void confirm("Ya tienes una canasta", `Tu canasta tiene productos de ${cart.merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${first.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
-        if (!ok) return;
-        cart.replaceWith(cm, first);
-        rest.forEach((l) => useCart.getState().addLine(cm, l));
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        after();
-      });
-      return;
-    }
-    rest.forEach((l) => useCart.getState().addLine(cm, l));
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    after();
+    requireAdultFor(lines.map((l) => l.product_id), alcohol, () => {
+      const [first, ...rest] = lines;
+      const res = useCart.getState().addLine(cm, first);
+      if (res === "different_merchant") {
+        void confirm("Ya tienes una canasta", `Tu canasta tiene productos de ${useCart.getState().merchant?.name ?? "otro comercio"}. ¿Quieres vaciarla y agregar ${first.name}?`, { okText: "Vaciar canasta y agregar", destructive: true }).then((ok) => {
+          if (!ok) return;
+          useCart.getState().replaceWith(cm, first);
+          rest.forEach((l) => useCart.getState().addLine(cm, l));
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          after();
+        });
+        return;
+      }
+      rest.forEach((l) => useCart.getState().addLine(cm, l));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      after();
+    });
   }
 
   function add() {
@@ -204,6 +225,7 @@ export default function ProductScreen() {
   const ctaTitle = !available ? "No disponible" : !isOpen ? "Comercio cerrado" : `Agregar · ${formatCOP(total)}`;
   const { name: shortName, unit: nameUnit } = splitUnit(p.name);
   const unitLabel = nameUnit ?? unitFromDescription(p.description);
+  const pct = discountPct(p);
 
   /* Bloque común: grupos de opciones con el estilo de 13 */
   const groupsBlock = available ? pageGroups.map((g, i) => {
@@ -254,9 +276,14 @@ export default function ProductScreen() {
 
   /* ───────────── 27 · Producto de mercado ───────────── */
   if (kind === "market") {
-    // Lo que se vende al peso va en bolsa: "Banano (1 kg)" → "Bolsa de 1 kg" (27); "Leche (1 L)" sigue "1 L".
-    const marketUnit = nameUnit && /^\d+(?:[.,]\d+)?\s?(?:kg|g|gr|lb)$/i.test(nameUnit) ? `Bolsa de ${nameUnit}` : unitLabel;
-    const white = productDesignImage(p.name, "white");
+    // Lo que se vende a granel va en bolsa: "Banano (1 kg)" → "Bolsa de 1 kg" (27), y también arroz, azúcar, yuca o
+    // limón por kilo. Solo por kilo o libra y en una categoría de frutas, verduras o despensa: la pechuga (bandeja), el
+    // atún (lata), el queso o las fresas (canastilla) muestran la presentación sola ("1 kg", "160 g"); "Leche (1 L)", "1 L".
+    const catName = menu.data?.categories.find((c) => c.id === p.category_id)?.name;
+    const bulk = Boolean(nameUnit && /^\d+(?:[.,]\d+)?\s?(?:kg|lb)$/i.test(nameUnit) && BULK_CATEGORY.test(normalizeName(catName)));
+    const marketUnit = bulk ? `Bolsa de ${nameUnit}` : unitLabel;
+    // Las cadenas de demo usan su foto de estudio (`studioProductPhoto`), no el recorte de diseño sobre blanco.
+    const white = studioProductPhoto(p) ? undefined : productDesignImage(p.name, "white");
     const onWhite = white !== undefined && white !== productDesignImage(p.name, "default");
     const imgW = width * (376.8 / 393);
     return (
@@ -273,7 +300,15 @@ export default function ProductScreen() {
           <View style={styles.marketBody}>
             <Text style={styles.marketName}>{shortName}</Text>
             {marketUnit ? <View style={styles.unitPill}><Text style={styles.unitPillText}>{marketUnit}</Text></View> : null}
-            <Text style={[styles.marketPrice, !marketUnit ? { marginTop: 4 } : null]}>{formatCOP(p.price)}</Text>
+            {pct ? (
+              <View style={[styles.dealRow, !marketUnit ? { marginTop: 4 } : null]} accessibilityLabel={dealLabel(p)}>
+                <View style={styles.dealPrice}><Text style={[styles.marketPrice, { marginTop: 0 }]}>{formatCOP(p.price)}</Text></View>
+                <BeforePrice value={p.compare_at_price ?? 0} style={styles.dealBefore} />
+                <DealBadge pct={pct} size={22} style={{ alignSelf: "center" }} />
+              </View>
+            ) : (
+              <Text style={[styles.marketPrice, !marketUnit ? { marginTop: 4 } : null]}>{formatCOP(p.price)}</Text>
+            )}
             <Text style={styles.marketDesc}>{p.description || (m?.name ? `Producto fresco de ${m.name}.` : "")}</Text>
             {unavailableBlock}
             {available ? (
@@ -288,6 +323,7 @@ export default function ProductScreen() {
                 <Text style={styles.marketNote}>Te contactaremos si cambia el precio.</Text>
               </>
             ) : null}
+            {isAlcohol ? <AlcoholLegal style={{ marginTop: 18 }} /> : null}
           </View>
         </ScrollView>
         <View style={[styles.bar, { paddingTop: 8.8, paddingLeft: 13.4, paddingRight: 12.5, paddingBottom: barPad(5.6) }]}>
@@ -368,6 +404,7 @@ export default function ProductScreen() {
           <Text style={styles.price}>{formatCOP(p.price)}</Text>
           <Text style={styles.name}>{p.name}</Text>
           {p.description ? <Text style={styles.desc}>{p.description}</Text> : null}
+          {isAlcohol ? <AlcoholLegal style={{ marginTop: 8 }} /> : null}
           {!available ? <Badge label={p.status === "paused" ? "No disponible por hoy" : "Agotado"} tone="unavailable" style={{ marginTop: 10 }} /> : null}
           {m ? (
             <Pressable onPress={openMerchant} accessibilityRole="button" accessibilityLabel={`Ver ${m.name}`} style={({ pressed }) => [styles.merchantRow, pressed ? { opacity: 0.8 } : null]}>
@@ -450,6 +487,9 @@ const styles = StyleSheet.create({
   marketDesc: { fontSize: 14.3, lineHeight: 19, color: colors.textTertiary, marginTop: 13.5 },
   marketSection: { fontSize: 18.5, lineHeight: 23, fontWeight: "700", letterSpacing: -0.2, color: colors.ink, marginTop: 15.2 },
   marketNote: { fontSize: 12.8, lineHeight: 17, color: colors.textPlaceholder, marginTop: 6.6 },
+  dealRow: { flexDirection: "row", alignItems: "center", gap: 9, marginTop: 10.1 },
+  dealPrice: { backgroundColor: DEAL_YELLOW, borderRadius: 6, paddingHorizontal: 6, marginLeft: -3 },
+  dealBefore: { fontSize: 15, lineHeight: 20 },
 
   // 30
   pharmaCard: { marginLeft: 6.9, marginTop: 2.4, borderRadius: radius.r24, overflow: "hidden", backgroundColor: colors.surfaceGray },

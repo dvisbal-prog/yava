@@ -9,7 +9,7 @@ import { useCart } from "@/store/cart";
 import { ErrorState } from "@/components/customer";
 import { OrderCard, OrderThumb, PaymentTile, PillButton, BoldCheck, useOrderPayment, addressLine, t, ORDER_GUTTER, BLUE_BRIGHT } from "@/components/customer/order/kit";
 import { orderMerchantPhoto, orderItemPhoto } from "@/components/customer/order/photos";
-import { useOrder, useOrderItems, useMyRating, useMerchant, useProductsByIds, relativeDateTime, type AddressSnapshot } from "@/features/customer";
+import { useOrder, useOrderItems, useMyRating, useMerchant, useProductsByIds, relativeDateTime, requireAdultFor, type AddressSnapshot } from "@/features/customer";
 import { confirm } from "@/lib/dialog";
 
 const DIVIDER = "#DCE1E8";
@@ -56,9 +56,13 @@ export default function OrderDelivered() {
       });
       router.push("/(customer)/cart" as never);
     };
-    if (cart.lines.length && cart.merchant?.id !== cm.id) {
-      void confirm("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", { okText: "Reemplazar", destructive: true }).then((ok) => { if (ok) doIt(); });
-    } else doIt();
+    // Si el pedido tenía licores, la verificación de edad va primero (consulta las categorías a la BD).
+    const productIds = (items.data ?? []).map((it) => it.product_id).filter((x): x is string => Boolean(x));
+    requireAdultFor(productIds, null, () => {
+      if (cart.lines.length && cart.merchant?.id !== cm.id) {
+        void confirm("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", { okText: "Reemplazar", destructive: true }).then((ok) => { if (ok) doIt(); });
+      } else doIt();
+    });
   }
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(customer)/orders" as never));

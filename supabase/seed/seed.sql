@@ -3,6 +3,8 @@
 --   cliente@yava.app · comercio@yava.app (Bocamar) · repartidor@yava.app · owner@yava.app · finanzas@yava.app
 -- Comercios: Bocamar, Naranmiche y Amaras (comida), Mercado del Puerto y Tienda de la Costa (mercado),
 -- Farmacia del Puerto y Bienestar Caribe (farmacia) y Arepas Doña Rosa (solicitud en revisión).
+-- Home ("Tiendas cerca de ti" y "Cervezas y licores"): D1, Olímpica, Carulla y Oxxo (mercado). Promociones
+-- patrocinadas de Bocamar, Naranmiche y Amaras con cupones que paga cada restaurante (0015).
 -- Nombres, precios, favoritos, notificaciones y soporte de María siguen los diseños del cliente 01–48
 -- (docs/DISENO-CLIENTE.md). Los pedidos de historial llevan productos (receta por comercio y subtotal).
 
@@ -81,7 +83,14 @@ insert into merchants (id, owner_id, name, slug, category, tagline, description,
  -- Segunda tienda y segunda farmacia de 25 y 29. Sin foto en Storage: el app usa los recortes del diseño por nombre.
  -- Bienestar Caribe queda un poco más lejos que Farmacia del Puerto para que 29 las liste en ese orden (por distancia).
  ('c0000000-0000-0000-0000-000000000007',null,'Tienda de la Costa','tienda-de-la-costa','market','Lácteos, despensa y hogar','Lo de todos los días para tu casa.','11111111-1111-1111-1111-111111111111','Carrera 3 # 6-40, Puerto Colombia',10.9868,-74.9532,'+573001110013','active',0.10,3000,30,45,4.6,75,'{mercado,lacteos,despensa}',false,null,null,null),
- ('c0000000-0000-0000-0000-000000000008',null,'Bienestar Caribe','bienestar-caribe','pharmacy','Tu salud, más cerca','Droguería con domicilio en Puerto Colombia.','11111111-1111-1111-1111-111111111111','Calle 6 # 3-15, Puerto Colombia',10.9905,-74.9575,'+573001110014','active',0.08,3000,35,45,4.7,48,'{farmacia,salud}',false,null,null,null);
+ ('c0000000-0000-0000-0000-000000000008',null,'Bienestar Caribe','bienestar-caribe','pharmacy','Tu salud, más cerca','Droguería con domicilio en Puerto Colombia.','11111111-1111-1111-1111-111111111111','Calle 6 # 3-15, Puerto Colombia',10.9905,-74.9575,'+573001110014','active',0.08,3000,35,45,4.7,48,'{farmacia,salud}',false,null,null,null),
+ -- Tiendas del Home ("Tiendas cerca de ti"): a 0,6–1,6 km de la Casa de María (Oxxo 0,62 · D1 0,88 · Olímpica 1,22 ·
+ -- Carulla 1,55), así que en 25 siguen primero Mercado del Puerto (destacada) y Tienda de la Costa (a 0,1 km).
+ -- Sin logo ni portada: el app dibuja un tile con el nombre (nunca el logo real de la cadena).
+ ('c0000000-0000-0000-0000-000000000009',null,'D1','d1','market','Precios bajos todos los días','Tienda de descuento con lo básico para tu casa.','11111111-1111-1111-1111-111111111111','Calle 6 # 10-25, Puerto Colombia',10.9800,-74.9505,'+573001110015','active',0.10,3000,25,35,4.4,210,'{mercado,descuentos,despensa,cervezas}',false,null,null,null),
+ ('c0000000-0000-0000-0000-000000000010',null,'Olímpica','olimpica','market','Supermercado','Mercado, aseo, licores y más.','11111111-1111-1111-1111-111111111111','Carrera 5 # 9-60, Puerto Colombia',10.9790,-74.9465,'+573001110016','active',0.10,3000,30,45,4.5,180,'{supermercado,mercado,licores}',false,null,null,null),
+ ('c0000000-0000-0000-0000-000000000011',null,'Carulla','carulla','market','Supermercado gourmet','Frescos, vinos y productos gourmet.','11111111-1111-1111-1111-111111111111','Carrera 8 # 11-40, Puerto Colombia',10.9760,-74.9455,'+573001110017','active',0.10,3000,35,50,4.7,140,'{supermercado,gourmet,vinos}',false,null,null,null),
+ ('c0000000-0000-0000-0000-000000000012',null,'Oxxo','oxxo','market','Tienda de conveniencia 24 horas','Bebidas, pasabocas y lo que te falte, a toda hora.','11111111-1111-1111-1111-111111111111','Calle 4 # 8-15, Puerto Colombia',10.9835,-74.9498,'+573001110018','active',0.10,3000,15,25,4.3,95,'{conveniencia,24 horas,bebidas}',false,null,null,null);
 
 insert into merchant_members (merchant_id, user_id) values
  ('c0000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000002'),
@@ -205,6 +214,230 @@ insert into products (merchant_id, category_id, name, description, price, image_
  ('c0000000-0000-0000-0000-000000000008','d0000000-0000-0000-0000-000000000082','Alcohol antiséptico 350 ml','',7400,'{https://images.unsplash.com/photo-1584483766114-2cea6facdf57?w=800}','published',true,40,8),
  ('c0000000-0000-0000-0000-000000000008','d0000000-0000-0000-0000-000000000083','Protector solar SPF 50','80 ml.',36000,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000005/protector-solar.jpg}','published',true,20,9);
 
+-- D1, Olímpica, Carulla y Oxxo (Home: "Tiendas cerca de ti" y "Cervezas y licores")
+-- Categorías de mercado con los nombres de los chips de 25 y "Cervezas y licores" al final: al agregar un producto
+-- de esa categoría el app pide confirmar la mayoría de edad.
+-- sort sigue siendo único y global: mercado 11–21, después de Mercado del Puerto (1–7) y Tienda de la Costa (8–10), y
+-- licores 114–121, al final de "Destacados" de la tienda (26) con la leyenda legal justo debajo (los licores nuevos
+-- del catálogo ampliado van en 110–113). Mismos nombres que en las otras tiendas ("Lo esencial" no los repite), pero
+-- con foto de estudio propia en product-images/<comercio>/ (leche-1l, arroz-1kg, aceite-vegetal-1l, banano-1kg,
+-- tomate-1kg, mango-tommy): en estas cadenas el app prefiere esa foto al recorte del Drive (studioProductPhoto).
+-- Licores: presentación entre paréntesis (el app la separa del nombre) y compare_at_price = precio antes del descuento.
+-- Fotos de licores: genéricas y sin ninguna marca a la vista (lata plateada, botella ámbar sin etiqueta, botella
+-- transparente sin etiqueta y botella de vino con etiqueta lisa).
+-- "Cervezas y licores" lleva sort 9 para quedar de última también con las categorías del catálogo ampliado (abajo).
+-- La de D1 se llama "Lácteos y huevos" (el chip "Lácteos" de 25 la sigue encontrando por la palabra "lácteo").
+insert into product_categories (id, merchant_id, name, sort) values
+ ('d0000000-0000-0000-0000-000000000091','c0000000-0000-0000-0000-000000000009','Lácteos y huevos',1),
+ ('d0000000-0000-0000-0000-000000000092','c0000000-0000-0000-0000-000000000009','Despensa',2),
+ ('d0000000-0000-0000-0000-000000000093','c0000000-0000-0000-0000-000000000009','Cervezas y licores',9),
+ ('d0000000-0000-0000-0000-000000000101','c0000000-0000-0000-0000-000000000010','Frutas',1),
+ ('d0000000-0000-0000-0000-000000000102','c0000000-0000-0000-0000-000000000010','Verduras',2),
+ ('d0000000-0000-0000-0000-000000000103','c0000000-0000-0000-0000-000000000010','Despensa',3),
+ ('d0000000-0000-0000-0000-000000000104','c0000000-0000-0000-0000-000000000010','Cervezas y licores',9),
+ ('d0000000-0000-0000-0000-000000000111','c0000000-0000-0000-0000-000000000011','Frutas',1),
+ ('d0000000-0000-0000-0000-000000000112','c0000000-0000-0000-0000-000000000011','Lácteos',2),
+ ('d0000000-0000-0000-0000-000000000113','c0000000-0000-0000-0000-000000000011','Despensa',3),
+ ('d0000000-0000-0000-0000-000000000114','c0000000-0000-0000-0000-000000000011','Cervezas y licores',9),
+ ('d0000000-0000-0000-0000-000000000121','c0000000-0000-0000-0000-000000000012','Lácteos',1),
+ ('d0000000-0000-0000-0000-000000000122','c0000000-0000-0000-0000-000000000012','Despensa',2),
+ ('d0000000-0000-0000-0000-000000000123','c0000000-0000-0000-0000-000000000012','Cervezas y licores',9);
+insert into products (id, merchant_id, category_id, name, description, price, compare_at_price, image_urls, status, track_stock, stock, sort) values
+ -- D1
+ ('e0000000-0000-0000-0000-000000000091','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000091','Leche (1 L)','',3800,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/leche-1l.jpg}','published',true,60,11),
+ ('e0000000-0000-0000-0000-000000000092','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000092','Arroz (1 kg)','',4200,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/arroz-1kg.jpg}','published',true,80,12),
+ ('e0000000-0000-0000-0000-000000000093','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000092','Aceite Premier 1 L','',13900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/aceite-vegetal-1l.jpg}','published',true,40,13),
+ ('e0000000-0000-0000-0000-000000000094','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000093','Cerveza Costeña lata (6 x 330 ml)','Six pack de cerveza en lata.',13900,15900,'{https://images.unsplash.com/photo-1696739696220-8d2e27465662?w=800}','published',true,48,114),
+ ('e0000000-0000-0000-0000-000000000095','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000093','Cerveza Poker lata (6 x 330 ml)','Six pack de cerveza en lata.',15500,null,'{https://images.unsplash.com/photo-1696739696220-8d2e27465662?w=800}','published',true,48,115),
+ -- Olímpica
+ ('e0000000-0000-0000-0000-000000000101','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000101','Banano (1 kg)','',4100,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/banano-1kg.jpg}','published',true,60,14),
+ ('e0000000-0000-0000-0000-000000000102','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000102','Tomate (1 kg)','',5200,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/tomate-1kg.jpg}','published',true,50,15),
+ ('e0000000-0000-0000-0000-000000000103','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000103','Arroz (1 kg)','',4700,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/arroz-1kg.jpg}','published',true,80,16),
+ ('e0000000-0000-0000-0000-000000000104','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000104','Club Colombia Dorada (6 x 330 ml)','Six pack de cerveza en botella.',21900,24500,'{https://images.unsplash.com/photo-1644085159285-5fd924740cb3?w=800}','published',true,36,116),
+ ('e0000000-0000-0000-0000-000000000105','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000104','Aguardiente Antioqueño (750 ml)','Aguardiente tradicional colombiano.',54900,62000,'{https://images.unsplash.com/photo-1591704951890-0862b2e98acb?w=800}','published',true,24,117),
+ -- Carulla
+ ('e0000000-0000-0000-0000-000000000111','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000111','Mango Tommy (unidad)','Mango dulce de temporada.',4200,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/mango-tommy.jpg}','published',true,30,17),
+ ('e0000000-0000-0000-0000-000000000112','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000112','Leche (1 L)','',4900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/leche-1l.jpg}','published',true,40,18),
+ ('e0000000-0000-0000-0000-000000000113','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000113','Aceite Premier 1 L','',15900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/aceite-vegetal-1l.jpg}','published',true,25,19),
+ ('e0000000-0000-0000-0000-000000000114','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000114','Cerveza Corona (6 x 355 ml)','Six pack de cerveza en botella.',32900,null,'{https://images.unsplash.com/photo-1644085159285-5fd924740cb3?w=800}','published',true,30,118),
+ ('e0000000-0000-0000-0000-000000000115','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000114','Vino tinto Casillero del Diablo (750 ml)','Vino tinto chileno.',59900,68900,'{https://images.unsplash.com/photo-1592119748016-a61c40a44320?w=800}','published',true,18,119),
+ -- Oxxo
+ ('e0000000-0000-0000-0000-000000000121','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000121','Leche (1 L)','',4900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/leche-1l.jpg}','published',true,30,20),
+ ('e0000000-0000-0000-0000-000000000122','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000122','Arroz (1 kg)','',5200,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/arroz-1kg.jpg}','published',true,30,21),
+ ('e0000000-0000-0000-0000-000000000123','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000123','Cerveza Águila lata (6 x 330 ml)','Six pack de cerveza en lata.',16900,19900,'{https://images.unsplash.com/photo-1696739696220-8d2e27465662?w=800}','published',true,48,120),
+ ('e0000000-0000-0000-0000-000000000124','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000123','Ron Medellín 3 años (750 ml)','Ron añejo colombiano.',48900,null,'{https://images.unsplash.com/photo-1591704951890-0862b2e98acb?w=800}','published',true,24,121);
+
+-- Catálogo ampliado de D1, Olímpica, Carulla y Oxxo (tiendas de demo, 29 oct 2026): 59 productos genéricos (sin
+-- marcas, salvo los licores de arriba) con la presentación entre paréntesis, en categorías propias de cada cadena:
+-- D1 (descuento): Despensa, Lácteos y huevos, Aseo del hogar, Snacks y dulces.
+-- Olímpica (supermercado): Frutas, Verduras, Carnes y pollo, Lácteos y huevos, Despensa, Bebidas.
+-- Carulla (gourmet): Frutas, Quesos, Panadería, Delicatessen (con el jamón serrano y el salami) y dos vinos más en
+-- "Cervezas y licores". La charcutería no va con los quesos: el chip "Lácteos" de 25 reconoce la palabra "queso".
+-- Oxxo (conveniencia 24 h): Bebidas frías, Snacks, Comida lista, Hielo y básicos y dos cervezas más.
+-- Ids fijos e0000000-…-0000000002NN (productos) y d0000000-…-0000000002NN (categorías), iguales en vivo.
+-- sort ≥ 40, único en todo el catálogo: 40–60 productos de las categorías de los chips de 25 (Frutas, Verduras,
+-- Lácteos, Despensa; así "Lo esencial", que trae los 60 primeros por sort, los alcanza), 70–103 el resto del mercado
+-- (102–103 el jamón y el salami de Carulla) y 110–113 los licores. "Lo esencial" sigue empezando por Banano, Tomate y
+-- Arroz de Mercado del Puerto (sort 1–3).
+-- Fotos: bodegones de estudio generados con Higgsfield (fondo blanco, empaque sin texto ni logos), 800 × 800 en
+-- product-images/<comercio>/<slug>.jpg, con el producto dentro del 66 % central del alto para que la tarjeta de 26
+-- (que recorta arriba y abajo) no lo corte; las versiones reencuadradas o repetidas llevan "-v2". Ninguna coincide con
+-- un recorte del diseño y en estas cadenas la foto de estudio gana siempre, así que el app usa image_urls.
+-- Descuentos (compare_at_price) de 10 a 30 % en 3–4 productos por tienda.
+insert into product_categories (id, merchant_id, name, sort) values
+ ('d0000000-0000-0000-0000-000000000201','c0000000-0000-0000-0000-000000000009','Aseo del hogar',3),
+ ('d0000000-0000-0000-0000-000000000202','c0000000-0000-0000-0000-000000000009','Snacks y dulces',4),
+ ('d0000000-0000-0000-0000-000000000211','c0000000-0000-0000-0000-000000000010','Carnes y pollo',4),
+ ('d0000000-0000-0000-0000-000000000212','c0000000-0000-0000-0000-000000000010','Lácteos y huevos',5),
+ ('d0000000-0000-0000-0000-000000000213','c0000000-0000-0000-0000-000000000010','Bebidas',6),
+ ('d0000000-0000-0000-0000-000000000221','c0000000-0000-0000-0000-000000000011','Quesos',4),
+ ('d0000000-0000-0000-0000-000000000222','c0000000-0000-0000-0000-000000000011','Panadería',5),
+ ('d0000000-0000-0000-0000-000000000223','c0000000-0000-0000-0000-000000000011','Delicatessen',6),
+ ('d0000000-0000-0000-0000-000000000231','c0000000-0000-0000-0000-000000000012','Bebidas frías',3),
+ ('d0000000-0000-0000-0000-000000000232','c0000000-0000-0000-0000-000000000012','Snacks',4),
+ ('d0000000-0000-0000-0000-000000000233','c0000000-0000-0000-0000-000000000012','Comida lista',5),
+ ('d0000000-0000-0000-0000-000000000234','c0000000-0000-0000-0000-000000000012','Hielo y básicos',6);
+insert into products (id, merchant_id, category_id, name, description, price, compare_at_price, image_urls, status, track_stock, stock, sort) values
+ -- D1
+ ('e0000000-0000-0000-0000-000000000201','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000092','Azúcar blanca (1 kg)','Azúcar refinada para el café y los postres.',4300,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/azucar-blanca-v2.jpg}','published',true,90,40),
+ ('e0000000-0000-0000-0000-000000000202','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000092','Pasta espagueti (500 g)','Pasta de trigo, lista en 10 minutos.',2900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/pasta-espagueti.jpg}','published',true,120,41),
+ ('e0000000-0000-0000-0000-000000000203','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000092','Lentejas (500 g)','Lentejas secas seleccionadas.',3900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/lentejas-v2.jpg}','published',true,70,42),
+ ('e0000000-0000-0000-0000-000000000204','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000092','Atún en aceite (160 g)','Lomitos de atún en aceite vegetal.',5200,6500,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/atun-en-aceite.jpg}','published',true,60,43),
+ ('e0000000-0000-0000-0000-000000000205','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000091','Huevos AA (30 und)','Huevos rojos tamaño AA en cubeta de 30.',16900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/huevos-aa-30-v2.jpg}','published',true,40,44),
+ ('e0000000-0000-0000-0000-000000000206','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000091','Queso costeño (500 g)','Queso blanco salado, típico de la costa.',11900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/queso-costeno.jpg}','published',true,35,45),
+ ('e0000000-0000-0000-0000-000000000207','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000091','Yogur de fresa (1 L)','Yogur bebible sabor a fresa.',5900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/yogur-fresa-v2.jpg}','published',true,45,46),
+ ('e0000000-0000-0000-0000-000000000208','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000201','Detergente en polvo (1 kg)','Para ropa blanca y de color.',8900,10900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/detergente-polvo-v2.jpg}','published',true,50,70),
+ ('e0000000-0000-0000-0000-000000000209','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000201','Lavaloza en crema (500 g)','Arranca la grasa de ollas y platos.',4500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/lavaloza-crema.jpg}','published',true,60,71),
+ ('e0000000-0000-0000-0000-000000000210','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000201','Papel higiénico (12 rollos)','Doble hoja, suave y resistente.',16900,19900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/papel-higienico-v2.jpg}','published',true,40,72),
+ ('e0000000-0000-0000-0000-000000000211','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000201','Blanqueador (1 L)','Desinfecta y blanquea, con cloro.',3200,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/blanqueador-v2.jpg}','published',true,70,73),
+ ('e0000000-0000-0000-0000-000000000212','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000202','Papas fritas (150 g)','Papas fritas clásicas con sal.',4500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/papas-fritas-v2.jpg}','published',true,80,74),
+ ('e0000000-0000-0000-0000-000000000213','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000202','Galletas de soda (9 paquetes)','Galletas saladas en paquetes individuales.',4900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/galletas-soda-v2.jpg}','published',true,60,75),
+ ('e0000000-0000-0000-0000-000000000214','c0000000-0000-0000-0000-000000000009','d0000000-0000-0000-0000-000000000202','Gomitas surtidas (100 g)','Gomitas de frutas surtidas.',2500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000009/gomitas-v2.jpg}','published',true,90,76),
+ -- Olímpica
+ ('e0000000-0000-0000-0000-000000000221','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000101','Papaya (unidad)','Papaya madura de 1,5 kg aprox.',5900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/papaya-v2.jpg}','published',true,25,47),
+ ('e0000000-0000-0000-0000-000000000222','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000101','Piña (unidad)','Piña dulce, lista para picar.',5500,6900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/pina-v2.jpg}','published',true,30,48),
+ ('e0000000-0000-0000-0000-000000000223','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000101','Limón Tahití (1 kg)','Limón jugoso y sin semillas.',4800,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/limon-tahiti.jpg}','published',true,40,49),
+ ('e0000000-0000-0000-0000-000000000224','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000102','Yuca (1 kg)','Yuca fresca para sancocho o frita.',3200,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/yuca.jpg}','published',true,40,50),
+ ('e0000000-0000-0000-0000-000000000225','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000212','Huevos rojos AA (15 und)','Huevos rojos tamaño AA.',9400,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/huevos-rojos-15.jpg}','published',true,40,51),
+ ('e0000000-0000-0000-0000-000000000226','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000212','Suero costeño (400 g)','Suero atollabuey para la arepa y el bollo.',7900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/suero-costeno.jpg}','published',true,30,52),
+ ('e0000000-0000-0000-0000-000000000227','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000212','Mantequilla con sal (250 g)','Mantequilla de leche de vaca.',8900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/mantequilla.jpg}','published',true,30,53),
+ ('e0000000-0000-0000-0000-000000000228','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000103','Café molido (500 g)','Café colombiano tostado y molido.',19900,23900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/cafe-molido-v2.jpg}','published',true,35,54),
+ ('e0000000-0000-0000-0000-000000000229','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000103','Harina de maíz (1 kg)','Harina de maíz precocida, para arepas suaves.',4900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/harina-maiz-v2.jpg}','published',true,50,55),
+ ('e0000000-0000-0000-0000-000000000230','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000211','Pechuga de pollo (1 kg)','Pechuga fresca, sin hueso y sin piel.',17900,21900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/pechuga-pollo.jpg}','published',true,25,77),
+ ('e0000000-0000-0000-0000-000000000231','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000211','Carne molida de res (500 g)','Carne de res molida, 90 % magra.',13900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/carne-molida.jpg}','published',true,25,78),
+ ('e0000000-0000-0000-0000-000000000232','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000211','Chuleta de cerdo (1 kg)','Chuletas frescas con hueso.',22900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/chuleta-cerdo.jpg}','published',true,20,79),
+ ('e0000000-0000-0000-0000-000000000233','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000213','Agua sin gas (6 x 600 ml)','Seis botellas de agua potable.',8900,10900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/agua-six-pack-v2.jpg}','published',true,40,80),
+ ('e0000000-0000-0000-0000-000000000234','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000213','Jugo de naranja (1 L)','Jugo de naranja sin azúcar añadida.',6900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/jugo-naranja-v2.jpg}','published',true,35,81),
+ ('e0000000-0000-0000-0000-000000000235','c0000000-0000-0000-0000-000000000010','d0000000-0000-0000-0000-000000000213','Gaseosa cola (1,5 L)','Bebida gaseosa sabor a cola.',5900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000010/gaseosa-cola-v2.jpg}','published',true,50,82),
+ -- Carulla
+ ('e0000000-0000-0000-0000-000000000241','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000111','Fresas (500 g)','Fresas frescas, dulces y firmes.',9900,12900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/fresas-v2.jpg}','published',true,25,56),
+ ('e0000000-0000-0000-0000-000000000242','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000111','Arándanos (125 g)','Arándanos frescos en canastilla.',11900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/arandanos.jpg}','published',true,20,57),
+ ('e0000000-0000-0000-0000-000000000243','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000111','Aguacate Hass (3 und)','Aguacates Hass en su punto.',10900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/aguacate-hass.jpg}','published',true,25,58),
+ ('e0000000-0000-0000-0000-000000000244','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000221','Queso parmesano (200 g)','Queso madurado, ideal para rallar.',26900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/queso-parmesano.jpg}','published',true,15,59),
+ ('e0000000-0000-0000-0000-000000000245','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000221','Mozzarella fresca (250 g)','Mozzarella fresca en suero.',14900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/mozzarella.jpg}','published',true,20,60),
+ ('e0000000-0000-0000-0000-000000000246','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000223','Jamón serrano (100 g)','Lonjas finas de jamón curado.',21900,26900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/jamon-serrano.jpg}','published',true,15,102),
+ ('e0000000-0000-0000-0000-000000000247','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000223','Salami italiano (100 g)','Salami curado en lonjas.',14900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/salami.jpg}','published',true,15,103),
+ ('e0000000-0000-0000-0000-000000000248','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000222','Pan de masa madre (600 g)','Pan artesanal de fermentación lenta.',14900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/pan-masa-madre.jpg}','published',true,15,83),
+ ('e0000000-0000-0000-0000-000000000249','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000222','Croissants (4 und)','Croissants de mantequilla, horneados del día.',13900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/croissants.jpg}','published',true,15,84),
+ ('e0000000-0000-0000-0000-000000000250','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000222','Baguette (unidad)','Baguette crujiente horneada en tienda.',6900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/baguette.jpg}','published',true,20,85),
+ ('e0000000-0000-0000-0000-000000000251','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000223','Aceite de oliva (500 ml)','Extra virgen, de primera prensada en frío.',39900,46900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/aceite-oliva-v2.jpg}','published',true,15,86),
+ ('e0000000-0000-0000-0000-000000000252','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000223','Pasta artesanal (500 g)','Pasta corta de sémola de trigo, secada lentamente.',15900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/pasta-artesanal-v2.jpg}','published',true,20,87),
+ ('e0000000-0000-0000-0000-000000000253','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000223','Pesto genovés (190 g)','Salsa de albahaca, queso y piñones.',17900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/pesto.jpg}','published',true,15,88),
+ ('e0000000-0000-0000-0000-000000000254','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000114','Vino blanco (750 ml)','Sauvignon Blanc seco y fresco.',54900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/vino-blanco-v2.jpg}','published',true,18,110),
+ ('e0000000-0000-0000-0000-000000000255','c0000000-0000-0000-0000-000000000011','d0000000-0000-0000-0000-000000000114','Vino tinto Malbec (750 ml)','Vino tinto de cuerpo medio.',69900,79900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000011/vino-malbec-v2.jpg}','published',true,18,111),
+ -- Oxxo
+ ('e0000000-0000-0000-0000-000000000261','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000231','Agua sin gas (600 ml)','Botella de agua fría.',2500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/agua-600-v2.jpg}','published',true,60,89),
+ ('e0000000-0000-0000-0000-000000000262','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000231','Bebida energética (473 ml)','Lata de bebida energética.',6500,7900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/bebida-energetica-v2.jpg}','published',true,40,90),
+ ('e0000000-0000-0000-0000-000000000263','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000231','Té frío de limón (500 ml)','Té negro frío con limón.',3900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/te-frio-limon-v2.jpg}','published',true,40,91),
+ ('e0000000-0000-0000-0000-000000000264','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000232','Maní con sal (100 g)','Maní tostado y salado.',3500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/mani-sal-v2.jpg}','published',true,50,92),
+ ('e0000000-0000-0000-0000-000000000265','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000232','Chocolatina con leche (40 g)','Barra de chocolate con leche.',2900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/chocolatina-v2.jpg}','published',true,60,93),
+ ('e0000000-0000-0000-0000-000000000266','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000232','Galletas con chips (8 und)','Galletas horneadas con chips de chocolate.',4200,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/galletas-chips-v2.jpg}','published',true,40,94),
+ ('e0000000-0000-0000-0000-000000000267','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000233','Sándwich de jamón (unidad)','Pan blanco con jamón y queso, se calienta en tienda.',9900,11900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/sandwich-jamon-queso-v2.jpg}','published',true,20,95),
+ ('e0000000-0000-0000-0000-000000000268','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000233','Empanada de carne (unidad)','Empanada frita de carne y papa.',3500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/empanada-carne.jpg}','published',true,30,96),
+ ('e0000000-0000-0000-0000-000000000269','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000233','Perro caliente (unidad)','Pan, salchicha y salsas.',7900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/perro-caliente.jpg}','published',true,20,97),
+ ('e0000000-0000-0000-0000-000000000270','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000233','Café americano (12 oz)','Café recién preparado.',3900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/cafe-americano.jpg}','published',true,50,98),
+ ('e0000000-0000-0000-0000-000000000271','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000234','Bolsa de hielo (2 kg)','Hielo en cubos para la nevera.',3500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/bolsa-hielo-v2.jpg}','published',true,40,99),
+ ('e0000000-0000-0000-0000-000000000272','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000234','Pilas AA (4 und)','Pilas alcalinas AA.',9900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/pilas-aa.jpg}','published',true,30,100),
+ ('e0000000-0000-0000-0000-000000000273','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000234','Vasos desechables (25 und)','Vasos plásticos de 7 oz.',3900,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/vasos-desechables-v2.jpg}','published',true,40,101),
+ ('e0000000-0000-0000-0000-000000000274','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000123','Cerveza rubia lata (473 ml)','Lata grande de cerveza rubia.',4500,null,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/cerveza-rubia-lata-v2.jpg}','published',true,72,112),
+ ('e0000000-0000-0000-0000-000000000275','c0000000-0000-0000-0000-000000000012','d0000000-0000-0000-0000-000000000123','Cerveza negra (6 x 330 ml)','Seis botellas de cerveza negra.',21900,24900,'{https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/c0000000-0000-0000-0000-000000000012/cerveza-negra-v2.jpg}','published',true,30,113);
+
+-- Verificación del catálogo ampliado
+do $$
+declare
+  v_n integer;
+  v_ids uuid[];
+  v_names text[];
+  v_new uuid[] := array['e0000000-0000-0000-0000-000000000201'::uuid,'e0000000-0000-0000-0000-000000000202'::uuid,'e0000000-0000-0000-0000-000000000203'::uuid,'e0000000-0000-0000-0000-000000000204'::uuid,'e0000000-0000-0000-0000-000000000205'::uuid,'e0000000-0000-0000-0000-000000000206'::uuid,'e0000000-0000-0000-0000-000000000207'::uuid,'e0000000-0000-0000-0000-000000000221'::uuid,'e0000000-0000-0000-0000-000000000222'::uuid,'e0000000-0000-0000-0000-000000000223'::uuid,'e0000000-0000-0000-0000-000000000224'::uuid,'e0000000-0000-0000-0000-000000000225'::uuid,'e0000000-0000-0000-0000-000000000226'::uuid,'e0000000-0000-0000-0000-000000000227'::uuid,'e0000000-0000-0000-0000-000000000228'::uuid,'e0000000-0000-0000-0000-000000000229'::uuid,'e0000000-0000-0000-0000-000000000241'::uuid,'e0000000-0000-0000-0000-000000000242'::uuid,'e0000000-0000-0000-0000-000000000243'::uuid,'e0000000-0000-0000-0000-000000000244'::uuid,'e0000000-0000-0000-0000-000000000245'::uuid,'e0000000-0000-0000-0000-000000000246'::uuid,'e0000000-0000-0000-0000-000000000247'::uuid,'e0000000-0000-0000-0000-000000000208'::uuid,'e0000000-0000-0000-0000-000000000209'::uuid,'e0000000-0000-0000-0000-000000000210'::uuid,'e0000000-0000-0000-0000-000000000211'::uuid,'e0000000-0000-0000-0000-000000000212'::uuid,'e0000000-0000-0000-0000-000000000213'::uuid,'e0000000-0000-0000-0000-000000000214'::uuid,'e0000000-0000-0000-0000-000000000230'::uuid,'e0000000-0000-0000-0000-000000000231'::uuid,'e0000000-0000-0000-0000-000000000232'::uuid,'e0000000-0000-0000-0000-000000000233'::uuid,'e0000000-0000-0000-0000-000000000234'::uuid,'e0000000-0000-0000-0000-000000000235'::uuid,'e0000000-0000-0000-0000-000000000248'::uuid,'e0000000-0000-0000-0000-000000000249'::uuid,'e0000000-0000-0000-0000-000000000250'::uuid,'e0000000-0000-0000-0000-000000000251'::uuid,'e0000000-0000-0000-0000-000000000252'::uuid,'e0000000-0000-0000-0000-000000000253'::uuid,'e0000000-0000-0000-0000-000000000261'::uuid,'e0000000-0000-0000-0000-000000000262'::uuid,'e0000000-0000-0000-0000-000000000263'::uuid,'e0000000-0000-0000-0000-000000000264'::uuid,'e0000000-0000-0000-0000-000000000265'::uuid,'e0000000-0000-0000-0000-000000000266'::uuid,'e0000000-0000-0000-0000-000000000267'::uuid,'e0000000-0000-0000-0000-000000000268'::uuid,'e0000000-0000-0000-0000-000000000269'::uuid,'e0000000-0000-0000-0000-000000000270'::uuid,'e0000000-0000-0000-0000-000000000271'::uuid,'e0000000-0000-0000-0000-000000000272'::uuid,'e0000000-0000-0000-0000-000000000273'::uuid,'e0000000-0000-0000-0000-000000000254'::uuid,'e0000000-0000-0000-0000-000000000255'::uuid,'e0000000-0000-0000-0000-000000000274'::uuid,'e0000000-0000-0000-0000-000000000275'::uuid];
+  v_chains uuid[] := array['c0000000-0000-0000-0000-000000000009'::uuid,'c0000000-0000-0000-0000-000000000010'::uuid,'c0000000-0000-0000-0000-000000000011'::uuid,'c0000000-0000-0000-0000-000000000012'::uuid];
+begin
+  -- Cada cadena tiene su catálogo nuevo completo (D1 14, Olímpica 15, Carulla 15, Oxxo 15)
+  select count(*) into v_n from products where id = any(v_new) and status = 'published' and track_stock and stock > 0;
+  if v_n <> 59 then raise exception 'Productos nuevos publicados con stock: % (se esperaban 59)', v_n; end if;
+  select count(*) into v_n from products p join product_categories c on c.id = p.category_id
+   where p.id = any(v_new) and c.merchant_id = p.merchant_id and p.merchant_id = any(v_chains)
+     and p.name ~ '\(.+\)$' and p.sort >= 40 and p.price % 100 = 0
+     and array_length(p.image_urls, 1) = 1
+     and p.image_urls[1] = 'https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/' || p.merchant_id || '/' || substring(p.image_urls[1] from '[^/]+$')
+     and p.image_urls[1] ~ '/[a-z0-9-]+\.jpg$';
+  if v_n <> 59 then raise exception 'Productos nuevos con categoría, presentación, sort, precio o foto inválidos: % de 59', v_n; end if;
+  -- Cada foto es distinta y el sort no se repite en todo el catálogo
+  select count(distinct image_urls[1]) into v_n from products where id = any(v_new);
+  if v_n <> 59 then raise exception 'Fotos repetidas en los productos nuevos'; end if;
+  if exists (select sort from products where merchant_id = any(v_chains) group by sort having count(*) > 1) then
+    raise exception 'Hay valores de sort repetidos en las cadenas';
+  end if;
+  -- Descuentos: entre 2 y 4 por tienda, del 10 al 30 %
+  select count(*) into v_n from (select p.merchant_id from products p where p.id = any(v_new) and p.compare_at_price is not null
+     group by p.merchant_id having count(*) between 2 and 4 and bool_and((p.compare_at_price - p.price)::numeric / p.compare_at_price between 0.10 and 0.30)) t;
+  if v_n <> 4 then raise exception 'Descuentos fuera de rango en % de 4 tiendas', 4 - v_n; end if;
+  -- Licores solo en la categoría de licores (is_alcohol) y ningún producto de mercado con nombre de licor
+  if exists (select 1 from products p join product_categories c on c.id = p.category_id
+              where p.id = any(v_new) and (c.is_alcohol <> is_alcohol_name(p.name))) then
+    raise exception 'Hay un licor fuera de "Cervezas y licores" o un producto de mercado dentro';
+  end if;
+  -- "Cervezas y licores" queda de última en cada cadena
+  select count(*) into v_n from product_categories c
+   where c.merchant_id = any(v_chains) and c.is_alcohol and c.name = 'Cervezas y licores'
+     and c.sort > (select max(c2.sort) from product_categories c2 where c2.merchant_id = c.merchant_id and not c2.is_alcohol);
+  if v_n <> 4 then raise exception '"Cervezas y licores" no es la última categoría en % cadenas', 4 - v_n; end if;
+  -- En "Destacados" (26, orden por sort) los licores van al final de cada cadena, justo encima de la leyenda legal
+  if exists (select 1 from products p join product_categories c on c.id = p.category_id
+              where p.merchant_id = any(v_chains) and c.is_alcohol
+                and p.sort < (select max(p2.sort) from products p2 join product_categories c2 on c2.id = p2.category_id
+                               where p2.merchant_id = p.merchant_id and not c2.is_alcohol)) then
+    raise exception 'Hay licores antes que productos de mercado en "Destacados" de una cadena';
+  end if;
+  -- El chip "Lácteos" de 25 (palabras lacteo, leche, queso, yogur) no encuentra charcutería
+  if exists (select 1 from products p join product_categories c on c.id = p.category_id
+              where p.merchant_id = any(v_chains)
+                and lower(translate(c.name, 'ÁÉÍÓÚáéíóú', 'AEIOUaeiou')) ~ '(lacteo|leche|queso|yogur)'
+                and lower(translate(p.name, 'ÁÉÍÓÚáéíóú', 'AEIOUaeiou')) ~ '(jamon|salami|salchichon|chorizo)') then
+    raise exception 'Hay charcutería en una categoría que el chip "Lácteos" reconoce';
+  end if;
+  -- Leche, arroz, aceite, banano, tomate y mango de las cadenas: foto de estudio propia (no el recorte del Drive)
+  select count(*) into v_n from products p
+   where p.id in ('e0000000-0000-0000-0000-000000000091','e0000000-0000-0000-0000-000000000092','e0000000-0000-0000-0000-000000000093',
+                  'e0000000-0000-0000-0000-000000000101','e0000000-0000-0000-0000-000000000102','e0000000-0000-0000-0000-000000000103',
+                  'e0000000-0000-0000-0000-000000000111','e0000000-0000-0000-0000-000000000112','e0000000-0000-0000-0000-000000000113',
+                  'e0000000-0000-0000-0000-000000000121','e0000000-0000-0000-0000-000000000122')
+     and p.image_urls[1] like 'https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/product-images/' || p.merchant_id || '/%.jpg';
+  if v_n <> 11 then raise exception 'Productos básicos de las cadenas sin foto de estudio propia: % de 11', 11 - v_n; end if;
+  -- Tiendas cercanas: siguen primero Mercado del Puerto y Tienda de la Costa
+  select array_agg(t.id order by t.ordinality) into v_ids from nearby_merchants(10.9871, -74.9541, 'market') with ordinality t;
+  if v_ids[1] <> 'c0000000-0000-0000-0000-000000000004' or v_ids[2] <> 'c0000000-0000-0000-0000-000000000007' or array_length(v_ids, 1) <> 6 then
+    raise exception 'Orden de tiendas cercanas inesperado: %', v_ids;
+  end if;
+  -- "Lo esencial" (25) trae los 60 primeros por sort de esas tiendas y empieza por la más cercana: Banano, Tomate, Arroz
+  select array_agg(t.name order by t.sort, t.name) into v_names
+    from (select p.name, p.sort, p.merchant_id from products p where p.merchant_id = any(v_ids) and p.status = 'published'
+           order by p.sort, p.name limit 60) t
+   where t.merchant_id = 'c0000000-0000-0000-0000-000000000004';
+  if v_names[1:3] is distinct from array['Banano (1 kg)','Tomate (1 kg)','Arroz (1 kg)'] then
+    raise exception '"Lo esencial" ya no empieza por Banano, Tomate y Arroz: %', v_names;
+  end if;
+end $$;
+
 -- Cupones y promociones
 insert into coupons (code, description, type, value, min_order, max_uses, per_user_limit, funded_by, valid_to) values
  ('BIENVENIDO','20 % en tu primer pedido','percent',20,20000,1000,1,'yava', now() + interval '90 days'),
@@ -215,6 +448,48 @@ insert into promotions (title, subtitle, image_url, merchant_id, coupon_code, so
  ('El sabor de la costa','Descubre tus favoritos','https://images.unsplash.com/photo-1535399831218-d5bd36d1a6b3?w=1200','c0000000-0000-0000-0000-000000000001',null,1),
  ('20 % en tu primer pedido','Usa el código BIENVENIDO','https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200',null,'BIENVENIDO',2),
  ('Envío gratis en Mercado','Pedidos desde $25.000 con ENVIOGRATIS','https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200','c0000000-0000-0000-0000-000000000004','ENVIOGRATIS',3);
+
+-- Cupones que paga cada restaurante (funded_by 'merchant'): place_order solo los acepta en pedidos de ese comercio y
+-- descuenta el cupón de su pago. El mínimo es el precio "Antes" del combo de su promoción.
+-- Vigencia fija: los flyers imprimen "Válido hasta el 27/01/2027", así que el cupón y su promoción valen hasta ese día
+-- a las 23:59:59 (hora de Colombia). Si cambia la fecha, hay que volver a renderizar los flyers (YAVA/flyers).
+insert into coupons (code, description, type, value, min_order, max_uses, per_user_limit, funded_by, merchant_id, valid_to) values
+ ('BOCAMAR5','$5.000 de descuento en Bocamar','fixed',5000,34000,null,2,'merchant','c0000000-0000-0000-0000-000000000001', '2027-01-27 23:59:59-05'),
+ ('NARAN20','20 % de descuento en Naranmiche','percent',20,26000,null,1,'merchant','c0000000-0000-0000-0000-000000000002', '2027-01-27 23:59:59-05'),
+ ('AMARAS2X','$8.000 de descuento en Amaras','fixed',8000,44000,null,2,'merchant','c0000000-0000-0000-0000-000000000003', '2027-01-27 23:59:59-05');
+
+-- Promociones patrocinadas (carrusel "Promociones" del Home, con la etiqueta "Patrocinado"). El banner (08) y Ofertas
+-- (33) no las muestran. sort 11–13 las deja después de las demás. image_url es el respaldo: el app usa el flyer local.
+insert into promotions (title, subtitle, image_url, merchant_id, coupon_code, ends_at, active, sponsored, sort) values
+ ('Combo ceviche + limonada','Ceviche clásico + Limonada natural · Antes $34.000 · Hoy $29.000 con BOCAMAR5','https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/merchant-media/c0000000-0000-0000-0000-000000000001/flyer.jpg','c0000000-0000-0000-0000-000000000001','BOCAMAR5', '2027-01-27 23:59:59-05', true, true, 11),
+ ('Combo hamburguesa + papas','Antes $26.000 · Hoy $20.800 con NARAN20','https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/merchant-media/c0000000-0000-0000-0000-000000000002/flyer.jpg','c0000000-0000-0000-0000-000000000002','NARAN20', '2027-01-27 23:59:59-05', true, true, 12),
+ ('2 shawarmas de pollo','Antes $44.000 · Hoy $36.000 con AMARAS2X','https://dgebycmouxjfuwtnhxmu.supabase.co/storage/v1/object/public/merchant-media/c0000000-0000-0000-0000-000000000003/flyer.jpg','c0000000-0000-0000-0000-000000000003','AMARAS2X', '2027-01-27 23:59:59-05', true, true, 13);
+
+-- Verificación de 0015: tiendas nuevas con horario y al menos 2 licores (Carulla y Oxxo tienen 4 con el catálogo
+-- ampliado; categoría marcada is_alcohol por el disparador),
+-- precios "antes" mayores que el actual, en 25 siguen primero Mercado del Puerto y Tienda de la Costa, y cada
+-- promoción patrocinada lleva el cupón de su comercio.
+do $$
+declare v_n integer; v_ids uuid[];
+begin
+  select count(*) into v_n from merchants m
+   where m.id in ('c0000000-0000-0000-0000-000000000009','c0000000-0000-0000-0000-000000000010','c0000000-0000-0000-0000-000000000011','c0000000-0000-0000-0000-000000000012')
+     and (select count(*) from merchant_hours h where h.merchant_id = m.id) = 7
+     and (select count(*) from products p join product_categories c on c.id = p.category_id
+           where p.merchant_id = m.id and c.name = 'Cervezas y licores' and c.is_alcohol and p.status = 'published' and p.name ~ '\(.+\)$') >= 2
+     and haversine_km(10.9871, -74.9541, m.lat, m.lng) between 0.6 and 1.6;
+  if v_n <> 4 then raise exception 'Solo % de 4 tiendas nuevas tienen horario, 2 o más licores y están a 0,6–1,6 km de María', v_n; end if;
+  if exists (select 1 from products where compare_at_price is not null and compare_at_price <= price) then
+    raise exception 'Hay productos con precio antes menor o igual al actual';
+  end if;
+  select array_agg(t.id order by t.ordinality) into v_ids from nearby_merchants(10.9871, -74.9541, 'market') with ordinality t;
+  if v_ids[1] <> 'c0000000-0000-0000-0000-000000000004' or v_ids[2] <> 'c0000000-0000-0000-0000-000000000007' or array_length(v_ids, 1) <> 6 then
+    raise exception 'Orden de tiendas cercanas inesperado: %', v_ids;
+  end if;
+  select count(*) into v_n from coupons c join promotions p on p.coupon_code = c.code and p.merchant_id = c.merchant_id
+   where p.sponsored and p.active and c.funded_by = 'merchant';
+  if v_n <> 3 then raise exception 'Promociones patrocinadas con el cupón de su comercio: % (se esperaban 3)', v_n; end if;
+end $$;
 
 -- Repartidor
 insert into couriers (user_id, city_id, vehicle, plate, document_number, status, is_online, current_lat, current_lng, last_seen_at, rating_avg, rating_count, deliveries_count, balance, bank_account) values

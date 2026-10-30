@@ -6,3 +6,4 @@ export * from "./useOnline";
 export * from "./useRequireAuth";
 export * from "./address";
 export * from "./wompi";
+export * from "./ageGate";

@@ -12,7 +12,7 @@ import { notify, confirm } from "@/lib/dialog";
 import { OrderCard, ErrorState } from "@/components/customer";
 import { NavBar } from "@/components/customer/account/kit";
 import { UnderlineTabs } from "@/components/customer/account/parts";
-import { useMyOrders, splitOrders, loginHref, type OrderSummaryRow, type OrderItemRow, type MerchantPublic } from "@/features/customer";
+import { useMyOrders, splitOrders, loginHref, requireAdultFor, type OrderSummaryRow, type OrderItemRow, type MerchantPublic } from "@/features/customer";
 import { useRealtimeOrders } from "@/hooks/useRealtimeOrder";
 
 /**
@@ -41,18 +41,21 @@ export default function Orders() {
       const merchant = m as MerchantPublic | null;
       if (!merchant) { notify("Comercio no disponible", "Este comercio ya no está activo."); return; }
       const cm = { id: merchant.id ?? "", name: merchant.name ?? "", delivery_fee: merchant.delivery_fee ?? 0, category: merchant.category ?? "food", prep_min: merchant.prep_min ?? 0, prep_max: merchant.prep_max ?? 0 };
+      const rows = (items ?? []) as OrderItemRow[];
       const doIt = () => {
         cart.clear();
-        ((items ?? []) as OrderItemRow[]).forEach((it) => {
+        rows.forEach((it) => {
           if (!it.product_id) return;
           const opts = Array.isArray(it.options) ? (it.options as { option_id: string; group_id: string; name: string; price_delta: number }[]) : [];
           cart.addLine(cm, { product_id: it.product_id, name: it.name, unit_price: it.unit_price, qty: it.qty, notes: it.notes ?? undefined, options: opts });
         });
         router.push("/(customer)/cart" as never);
       };
-      if (cart.lines.length && cart.merchant?.id !== cm.id) {
-        if (await confirm("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", { okText: "Reemplazar", destructive: true })) doIt();
-      } else doIt();
+      // Si el pedido tenía licores, la verificación de edad va primero (consulta las categorías a la BD).
+      const productIds = rows.map((it) => it.product_id).filter((x): x is string => Boolean(x));
+      const replaceOk = async () => !(cart.lines.length && cart.merchant?.id !== cm.id)
+        || confirm("Ya tienes una canasta", "¿Quieres reemplazarla con este pedido?", { okText: "Reemplazar", destructive: true });
+      requireAdultFor(productIds, null, () => { void replaceOk().then((ok) => { if (ok) doIt(); }); });
     } catch (e) {
       notify("No se pudo repetir el pedido", errorMessage(e));
     }

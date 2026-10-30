@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/store/auth";
@@ -5,6 +6,7 @@ import { useLocation } from "@/store/location";
 import type { MerchantCategory, OrderStatus } from "@yava/shared";
 import { DEFAULT_COORDS } from "./helpers";
 import { ACTIVE_STATUSES, TRACKING_STATUSES } from "./types";
+import { isAlcoholCategory } from "./ageGate";
 import type {
   NearbyMerchant, MerchantPublic, ProductRow, ProductCategoryRow, OptionGroupRow, OptionRow, ProductDetail, AddressRow,
   PromotionRow, CouponRow, PaymentMethodRow, OrderSummaryRow, OrderItemRow, OrderEventRow, OrderMessageRow, NotificationRow,
@@ -177,16 +179,96 @@ export function useSearch(q: string) {
 }
 
 /* ---------------- Promociones y cupones ---------------- */
+function inWindow(p: PromotionRow, now: number): boolean {
+  return (!p.starts_at || new Date(p.starts_at).getTime() <= now) && (!p.ends_at || new Date(p.ends_at).getTime() >= now);
+}
+
+/** Promociones propias de YAVA (banner de 08, Ofertas 33). Las pautas pagadas (`sponsored`) van aparte. */
 export function usePromotions() {
   return useQuery({
     queryKey: ["promotions"],
     queryFn: async (): Promise<PromotionRow[]> => {
-      const { data, error } = await supabase.from("promotions").select("*").eq("active", true).order("sort");
+      const { data, error } = await supabase.from("promotions").select("*").eq("active", true).eq("sponsored", false).order("sort");
       throwIf(error);
       const now = Date.now();
-      return ((data ?? []) as PromotionRow[]).filter((p) => (!p.starts_at || new Date(p.starts_at).getTime() <= now) && (!p.ends_at || new Date(p.ends_at).getTime() >= now));
+      return ((data ?? []) as PromotionRow[]).filter((p) => inWindow(p, now));
     },
   });
+}
+
+/** Pautas pagadas por los restaurantes (carrusel "Promociones" del Inicio), vigentes y en orden de `sort`. */
+export function useSponsoredPromotions() {
+  return useQuery({
+    queryKey: ["promotions", "sponsored"],
+    queryFn: async (): Promise<PromotionRow[]> => {
+      const { data, error } = await supabase.from("promotions").select("*").eq("active", true).eq("sponsored", true).order("sort");
+      throwIf(error);
+      const now = Date.now();
+      return ((data ?? []) as PromotionRow[]).filter((p) => inWindow(p, now));
+    },
+  });
+}
+
+/** Producto de licor de una tienda cercana, con la tienda (para la ficha "logo · nombre · tiempo"). */
+export interface NearbyDrink {
+  product: ProductRow;
+  store: NearbyMerchant;
+  /** Tiene grupos de opciones: "+" abre el detalle en vez de agregar directo. */
+  hasOptions: boolean;
+}
+
+/** Descuento en fracción (0,15 = 15 %) según `compare_at_price`; 0 si no tiene precio anterior. */
+export function discountOf(p: Pick<ProductRow, "price" | "compare_at_price">): number {
+  const before = p.compare_at_price;
+  return before && before > p.price ? (before - p.price) / before : 0;
+}
+
+/**
+ * "Cervezas y licores" del Inicio: productos publicados de las categorías de licor de las tiendas de mercado
+ * cercanas, primero los de mayor descuento y luego los más baratos. Las tiendas cerradas quedan al final.
+ */
+export function useNearbyDrinks(limit = 10) {
+  const stores = useNearbyMerchants("market");
+  const ids = useMemo(() => (stores.data ?? []).map((m) => m.id), [stores.data]);
+  const key = [...ids].sort().join(",");
+  const products = useQuery({
+    queryKey: ["nearby-drinks", key],
+    enabled: ids.length > 0,
+    queryFn: async (): Promise<{ products: ProductRow[]; withOptions: Set<string> }> => {
+      const { data: cats, error: ce } = await supabase.from("product_categories").select("id,name,is_alcohol").in("merchant_id", ids);
+      throwIf(ce);
+      const catIds = ((cats ?? []) as { id: string; name: string; is_alcohol: boolean | null }[]).filter(isAlcoholCategory).map((c) => c.id);
+      if (!catIds.length) return { products: [], withOptions: new Set() };
+      const { data, error } = await supabase.from("products").select("*").in("category_id", catIds).eq("status", "published");
+      throwIf(error);
+      const rows = (data ?? []) as ProductRow[];
+      let withOptions = new Set<string>();
+      if (rows.length) {
+        const { data: groups } = await supabase.from("product_option_groups").select("product_id").in("product_id", rows.map((p) => p.id));
+        withOptions = new Set(((groups ?? []) as { product_id: string }[]).map((g) => g.product_id));
+      }
+      return { products: rows, withOptions };
+    },
+  });
+  // La tienda se junta aquí (no en la consulta) para que "abierta/cerrada" y el tiempo sigan a `nearby_merchants`.
+  const data = useMemo<NearbyDrink[] | undefined>(() => {
+    if (!products.data) return undefined;
+    const byId = new Map((stores.data ?? []).map((m) => [m.id, m]));
+    const opts = products.data.withOptions;
+    return products.data.products
+      .flatMap((product) => { const store = byId.get(product.merchant_id); return store ? [{ product, store, hasOptions: opts.has(product.id) }] : []; })
+      .sort((a, b) => Number(b.store.is_open) - Number(a.store.is_open)
+        || discountOf(b.product) - discountOf(a.product)
+        || a.product.price - b.product.price
+        || a.product.name.localeCompare(b.product.name, "es"))
+      .slice(0, limit);
+  }, [products.data, stores.data, limit]);
+  return {
+    data,
+    isLoading: stores.isLoading || (ids.length > 0 && products.isLoading),
+    error: stores.error ?? products.error,
+    refetch: async () => { await stores.refetch(); await products.refetch(); },
+  };
 }
 
 export function useActiveCoupons() {

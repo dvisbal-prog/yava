@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Pressable, ScrollView, StyleSheet, StyleProp, ViewStyle, Platform } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +7,7 @@ import { Text } from "@/components/ui";
 import { AddButton } from "@/components/customer/AddButton";
 import type { DesignImageSource } from "@/lib/design-images";
 import { PillStepper } from "./PillStepper";
+import { DEAL_YELLOW, DealBadge, BeforePrice, discountPct, dealLabel } from "./Deal";
 
 /** En web un `<button>` no puede contener otro: las tarjetas con "+" adentro solo se anuncian como botón en nativo. */
 const CARD_ROLE = Platform.OS === "web" ? undefined : ("button" as const);
@@ -88,24 +89,42 @@ export function MenuGridCard({ name, description, price, image, onPress, onAdd, 
 /* ───────────────────────── C10f · Barra segmentada de categorías (26) ───────────────────────── */
 
 /**
- * Barra gris con el segmento activo `blueSoft` a toda la altura (26). Con hasta 4 opciones el activo abraza su texto
- * y el resto se reparte el ancho; con más, se desplaza horizontalmente.
+ * Barra gris con el segmento activo `blueSoft` a toda la altura (26). Con hasta 4 opciones cortas el activo abraza su
+ * texto y el resto se reparte el ancho; con más, o si alguna no cabe en su parte ("Cervezas y licores", "Cuidado
+ * personal"), se desplaza horizontalmente y cada una muestra su nombre completo; al elegir una que no se ve entera,
+ * la barra se desplaza para mostrarla.
  */
 export function SegmentBar({ tabs, value, onChange, style }: { tabs: TabItem[]; value: string; onChange: (k: string) => void; style?: StyleProp<ViewStyle> }) {
-  const fit = tabs.length <= 4;
+  const fit = tabs.length <= 4 && tabs.every((t) => t.label.length <= 12);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const pos = useRef<Record<string, { x: number; w: number }>>({});
+  const [barW, setBarW] = useState(0);
+  const scrollX = useRef(0);
+  useEffect(() => {
+    const p = pos.current[value];
+    if (fit || !p || !barW) return;
+    const start = scrollX.current;
+    if (p.x >= start && p.x + p.w <= start + barW) return; // ya se ve entero
+    // Cortado a la derecha: se alinea su borde derecho (con aire); a la izquierda, su borde izquierdo. El
+    // ScrollView no pasa del final del contenido.
+    const x = p.x + p.w > start + barW ? p.x + p.w - barW + 12 : p.x - 12;
+    scrollRef.current?.scrollTo({ x: Math.max(0, x), animated: true });
+  }, [value, fit, barW]);
   const items = tabs.map((t) => {
     const active = t.key === value;
     return (
       <Pressable key={t.key} onPress={() => onChange(t.key)} accessibilityRole="tab" accessibilityState={{ selected: active }}
+        onLayout={fit ? undefined : (e) => { pos.current[t.key] = { x: e.nativeEvent.layout.x, w: e.nativeEvent.layout.width }; }}
         style={[styles.seg, active && styles.segActive, fit && !active ? { flex: 1, paddingHorizontal: 4 } : null]}>
         <Text style={[styles.segText, active && styles.segTextActive]} numberOfLines={1}>{t.label}</Text>
       </Pressable>
     );
   });
   return (
-    <View style={[styles.segBar, style]}>
+    <View style={[styles.segBar, style]} onLayout={fit ? undefined : (e) => setBarW(e.nativeEvent.layout.width)}>
       {fit ? <View style={styles.segRow}>{items}</View> : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segRow}>{items}</ScrollView>
+        <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segRow}
+          onScroll={(e) => { scrollX.current = e.nativeEvent.contentOffset.x; }} scrollEventThrottle={32}>{items}</ScrollView>
       )}
     </View>
   );
@@ -113,19 +132,35 @@ export function SegmentBar({ tabs, value, onChange, style }: { tabs: TabItem[]; 
 
 /* ───────────────────────── C12b · Tarjeta de producto de mercado (26) ───────────────────────── */
 
-/** Tarjeta 173,7 × 219 pt radio 14 con borde: foto 135 pt, nombre, presentación, precio y "+" 34 pt (26). */
-export function MarketProductCard({ name, unit, price, image, onPress, onAdd, qty, onQty, disabled, soldOutLabel, width }: {
-  name: string; unit?: string | null; price: number; image?: DesignImageSource; onPress: () => void; onAdd?: () => void;
+/**
+ * Tarjeta 173,7 × 219 pt radio 14 con borde: foto 135 pt, nombre, presentación, precio y "+" 34 pt (26).
+ * Con `compareAt` (precio antes del descuento) suma la insignia "-N%" sobre la foto, el precio anterior tachado junto
+ * a la presentación y el resaltado amarillo del precio, como la tarjeta de licores del Inicio.
+ */
+export function MarketProductCard({ name, unit, price, compareAt, image, onPress, onAdd, qty, onQty, disabled, soldOutLabel, width }: {
+  name: string; unit?: string | null; price: number; compareAt?: number | null; image?: DesignImageSource; onPress: () => void; onAdd?: () => void;
   qty?: number; onQty?: (q: number) => void; disabled?: boolean; soldOutLabel?: string; width: number;
 }) {
   const showStepper = !disabled && !soldOutLabel && typeof qty === "number" && qty > 0 && onQty;
+  const pct = soldOutLabel ? 0 : discountPct({ price, compare_at_price: compareAt });
   return (
-    <Pressable onPress={onPress} accessibilityRole={CARD_ROLE} accessibilityLabel={name} style={({ pressed }) => [styles.mkCard, { width, opacity: pressed ? 0.92 : 1 }]}>
+    <Pressable onPress={onPress} accessibilityRole={CARD_ROLE} accessibilityLabel={pct ? `${name}. ${dealLabel({ price, compare_at_price: compareAt })}` : name}
+      style={({ pressed }) => [styles.mkCard, { width, opacity: pressed ? 0.92 : 1 }]}>
       <Image source={image} style={[styles.mkPhoto, soldOutLabel ? { opacity: 0.5 } : null]} contentFit="cover" transition={150} />
+      {pct ? <DealBadge pct={pct} style={styles.mkBadge} /> : null}
       <View style={styles.mkBody}>
         <Text style={styles.mkName} numberOfLines={1}>{name}</Text>
-        <Text style={styles.mkUnit} numberOfLines={1}>{soldOutLabel ?? unit ?? " "}</Text>
-        <Text style={[styles.mkPrice, (disabled || soldOutLabel) ? { color: colors.textTertiary } : null, showStepper ? { marginRight: 92 } : { marginRight: 40 }]} numberOfLines={1}>{formatCOP(price)}</Text>
+        {pct && compareAt ? (
+          <View style={styles.mkUnitRow}>
+            {unit ? <Text style={[styles.mkUnit, styles.mkUnitShrink]} numberOfLines={1}>{unit}</Text> : null}
+            <BeforePrice value={compareAt} style={[styles.mkBefore, unit ? { marginLeft: 6 } : null]} />
+          </View>
+        ) : (
+          <Text style={styles.mkUnit} numberOfLines={1}>{soldOutLabel ?? unit ?? " "}</Text>
+        )}
+        <View style={[styles.mkPriceWrap, showStepper ? { marginRight: 92 } : { marginRight: 40 }, pct ? styles.mkPriceDeal : null]}>
+          <Text style={[styles.mkPrice, (disabled || soldOutLabel) ? { color: colors.textTertiary } : null]} numberOfLines={1}>{formatCOP(price)}</Text>
+        </View>
       </View>
       {soldOutLabel ? null : showStepper ? (
         <PillStepper value={qty} onChange={onQty} style={styles.mkAction} />
@@ -225,7 +260,13 @@ const styles = StyleSheet.create({
   mkAction: { position: "absolute", right: 7.6, bottom: 12.4 },
   mkName: { fontSize: 14.3, lineHeight: 19, fontWeight: "600", color: colors.ink, marginRight: 8 },
   mkUnit: { fontSize: 11.7, lineHeight: 16, color: colors.textTertiary, marginTop: 0.1, marginRight: 8 },
-  mkPrice: { fontSize: 16.6, lineHeight: 25, fontWeight: "700", color: colors.ink, marginTop: 5 },
+  mkPrice: { fontSize: 16.6, lineHeight: 25, fontWeight: "700", color: colors.ink },
+  mkPriceWrap: { alignSelf: "flex-start", marginTop: 5 },
+  mkPriceDeal: { backgroundColor: DEAL_YELLOW, borderRadius: 5, paddingHorizontal: 5, marginLeft: -2 },
+  mkUnitRow: { flexDirection: "row", alignItems: "center", marginTop: 0.1, marginRight: 8 },
+  mkUnitShrink: { flexShrink: 1, marginTop: 0, marginRight: 0 },
+  mkBefore: { fontSize: 11.7, lineHeight: 16, flexShrink: 0 },
+  mkBadge: { position: "absolute", top: 8, left: 8 },
 
   // 43
   clCard: { borderRadius: radius.r14, borderWidth: 1, borderColor: colors.cardBorder, backgroundColor: colors.white, overflow: "hidden" },

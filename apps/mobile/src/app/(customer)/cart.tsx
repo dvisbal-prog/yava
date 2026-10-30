@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import { computeTotals } from "@yava/shared";
 import { useCart } from "@/store/cart";
 import { isProductAvailable } from "@/components/customer";
-import { useMerchant, useMerchantMenu, useProductsByIds, useRequireAuth, type ProductRow } from "@/features/customer";
+import { useMerchant, useMerchantMenu, useProductsByIds, useRequireAuth, alcoholProductIds, requireAdultFor, type ProductRow } from "@/features/customer";
 import { notify } from "@/lib/dialog";
 import { FoodCart } from "@/components/customer/cart/FoodCart";
 import { StoreCart } from "@/components/customer/cart/StoreCart";
@@ -61,10 +61,15 @@ export default function Cart() {
   const totals = useMemo(() => computeTotals({ lines: cart.lines, deliveryFee: cart.merchant?.delivery_fee ?? 0 }), [cart.lines, cart.merchant?.delivery_fee]);
 
   function addSuggestion(p: ProductRow) {
-    if (!cart.merchant) return;
+    const target = cart.merchant;
+    if (!target) return;
     if (menu.data?.withOptions.has(p.id)) { router.push(`/(customer)/product/${p.id}` as never); return; }
-    cart.addLine(cart.merchant, { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] });
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Un licor sugerido pide la verificación de edad si aún no se hizo en esta sesión.
+    const alcohol = menu.data ? alcoholProductIds(menu.data.products, menu.data.categories) : null;
+    requireAdultFor([p.id], alcohol, () => {
+      useCart.getState().addLine(target, { product_id: p.id, name: p.name, unit_price: p.price, qty: 1, options: [] });
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    });
   }
 
   function setQty(index: number, qty: number) {
@@ -74,8 +79,15 @@ export default function Cart() {
 
   function continueToCheckout() {
     if (unavailable.size) { notify("Revisa tu canasta", "Elimina o reemplaza los productos no disponibles para continuar."); return; }
-    if (!requireAuth("/(customer)/checkout")) return;
-    router.push("/(customer)/checkout" as never);
+    // La canasta se guarda en el teléfono pero la confirmación de edad vive en memoria: si trae licores de una sesión
+    // anterior (o se subió la cantidad con "+"), se pide antes de pagar. Sin todo el menú a mano se consulta a la BD.
+    const ids = cart.lines.map((l) => l.product_id);
+    const inMenu = new Set((menu.data?.products ?? []).map((x) => x.id));
+    const known = menu.data && ids.every((x) => inMenu.has(x)) ? alcoholProductIds(menu.data.products, menu.data.categories) : null;
+    requireAdultFor(ids, known, () => {
+      if (!requireAuth("/(customer)/checkout")) return;
+      router.push("/(customer)/checkout" as never);
+    });
   }
 
   if (!cart.lines.length || !cart.merchant) {
