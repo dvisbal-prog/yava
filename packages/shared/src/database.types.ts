@@ -801,14 +801,14 @@ isOneToOne: false
                   ]
                 },"product_categories": {
                   Row: {
-                    "id": string,"merchant_id": string,"name": string,"sort": number
+                    "id": string,"is_alcohol": boolean,"merchant_id": string,"name": string,"sort": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "id"?: string,"merchant_id": string,"name": string,"sort"?: number
+                    "id"?: string,"is_alcohol"?: boolean,"merchant_id": string,"name": string,"sort"?: number
                   }
                   Update: {
-                    "id"?: string,"merchant_id"?: string,"name"?: string,"sort"?: number
+                    "id"?: string,"is_alcohol"?: boolean,"merchant_id"?: string,"name"?: string,"sort"?: number
                   }
                   Relationships: [
                     {
@@ -867,14 +867,14 @@ isOneToOne: false
                   ]
                 },"products": {
                   Row: {
-                    "available_from": string | null,"available_to": string | null,"category_id": string | null,"created_at": string,"description": string | null,"id": string,"image_urls": (string)[],"merchant_id": string,"name": string,"price": number,"sort": number,"status": Database["public"]['Enums']["product_status"],"stock": number | null,"track_stock": boolean,"updated_at": string
+                    "available_from": string | null,"available_to": string | null,"category_id": string | null,"compare_at_price": number | null,"created_at": string,"description": string | null,"id": string,"image_urls": (string)[],"merchant_id": string,"name": string,"price": number,"sort": number,"status": Database["public"]['Enums']["product_status"],"stock": number | null,"track_stock": boolean,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "available_from"?: string | null,"available_to"?: string | null,"category_id"?: string | null,"created_at"?: string,"description"?: string | null,"id"?: string,"image_urls"?: (string)[],"merchant_id": string,"name": string,"price": number,"sort"?: number,"status"?: Database["public"]['Enums']["product_status"],"stock"?: number | null,"track_stock"?: boolean,"updated_at"?: string
+                    "available_from"?: string | null,"available_to"?: string | null,"category_id"?: string | null,"compare_at_price"?: number | null,"created_at"?: string,"description"?: string | null,"id"?: string,"image_urls"?: (string)[],"merchant_id": string,"name": string,"price": number,"sort"?: number,"status"?: Database["public"]['Enums']["product_status"],"stock"?: number | null,"track_stock"?: boolean,"updated_at"?: string
                   }
                   Update: {
-                    "available_from"?: string | null,"available_to"?: string | null,"category_id"?: string | null,"created_at"?: string,"description"?: string | null,"id"?: string,"image_urls"?: (string)[],"merchant_id"?: string,"name"?: string,"price"?: number,"sort"?: number,"status"?: Database["public"]['Enums']["product_status"],"stock"?: number | null,"track_stock"?: boolean,"updated_at"?: string
+                    "available_from"?: string | null,"available_to"?: string | null,"category_id"?: string | null,"compare_at_price"?: number | null,"created_at"?: string,"description"?: string | null,"id"?: string,"image_urls"?: (string)[],"merchant_id"?: string,"name"?: string,"price"?: number,"sort"?: number,"status"?: Database["public"]['Enums']["product_status"],"stock"?: number | null,"track_stock"?: boolean,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -925,14 +925,14 @@ isOneToOne: false
                   ]
                 },"promotions": {
                   Row: {
-                    "active": boolean,"city_id": string | null,"coupon_code": string | null,"ends_at": string | null,"id": string,"image_url": string | null,"merchant_id": string | null,"sort": number,"starts_at": string | null,"subtitle": string | null,"title": string
+                    "active": boolean,"city_id": string | null,"coupon_code": string | null,"ends_at": string | null,"id": string,"image_url": string | null,"merchant_id": string | null,"sort": number,"sponsored": boolean,"starts_at": string | null,"subtitle": string | null,"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"city_id"?: string | null,"coupon_code"?: string | null,"ends_at"?: string | null,"id"?: string,"image_url"?: string | null,"merchant_id"?: string | null,"sort"?: number,"starts_at"?: string | null,"subtitle"?: string | null,"title": string
+                    "active"?: boolean,"city_id"?: string | null,"coupon_code"?: string | null,"ends_at"?: string | null,"id"?: string,"image_url"?: string | null,"merchant_id"?: string | null,"sort"?: number,"sponsored"?: boolean,"starts_at"?: string | null,"subtitle"?: string | null,"title": string
                   }
                   Update: {
-                    "active"?: boolean,"city_id"?: string | null,"coupon_code"?: string | null,"ends_at"?: string | null,"id"?: string,"image_url"?: string | null,"merchant_id"?: string | null,"sort"?: number,"starts_at"?: string | null,"subtitle"?: string | null,"title"?: string
+                    "active"?: boolean,"city_id"?: string | null,"coupon_code"?: string | null,"ends_at"?: string | null,"id"?: string,"image_url"?: string | null,"merchant_id"?: string | null,"sort"?: number,"sponsored"?: boolean,"starts_at"?: string | null,"subtitle"?: string | null,"title"?: string
                   }
                   Relationships: [
                     {
